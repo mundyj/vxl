@@ -98,12 +98,11 @@ void bvgl_ptset_3d_ops<T>::remove_noise(T radius, T dist_tol, size_t n_nbrs){
   }
 }
 template <class T>
-bool bvgl_ptset_3d_ops<T>::R_to_diagonalize_covar(vgl_pointset_3d<T> const& ptset,
-  vnl_matrix_fixed<T, 3, 3>& R, std::vector<T>& lambda, T frac_ptset) {
+bool bvgl_ptset_3d_ops<T>::covariance_matrix(vgl_pointset_3d<T> const& ptset, vnl_matrix_fixed<T, 3, 3>& C, T frac_ptset){
   vnl_random rand;
   size_t n = ptset.size();
   if (n < 100) {
-    std::cerr << "pointset too small to compute R n = " << n << std::endl;
+    std::cerr << "pointset too small to compute covariance accurately = " << n << std::endl;
     return false;
   }
   T f = frac_ptset;
@@ -111,7 +110,7 @@ bool bvgl_ptset_3d_ops<T>::R_to_diagonalize_covar(vgl_pointset_3d<T> const& ptse
     f = T(1);
   size_t fn = static_cast<size_t>(f * n);
   //compute mean position
-  double mean_x = 0.0, mean_y = 0.0, mean_z = 0.0;
+  T mean_x = 0.0, mean_y = 0.0, mean_z = 0.0;
   for (size_t i = 0; i < fn; ++i) {
     size_t k = rand(fn);
     vgl_point_3d<T> p = ptset.p(k);
@@ -121,25 +120,33 @@ bool bvgl_ptset_3d_ops<T>::R_to_diagonalize_covar(vgl_pointset_3d<T> const& ptse
   }
   mean_x /= fn;   mean_y /= fn;   mean_z /= fn;
   // compute the covariance matrix
-  double C00 = 0.0, C01 = 0.0, C02 = 0.0;
-  double C11 = 0.0, C12 = 0.0, C22 = 0.0;
+  T C00 = 0.0, C01 = 0.0, C02 = 0.0;
+  T C11 = 0.0, C12 = 0.0, C22 = 0.0;
   for (size_t i = 0; i < fn; ++i) {
     size_t k = rand(fn);
     vgl_point_3d<T> p = ptset.p(k);
-    double vx = p.x() - mean_x;
-    double vy = p.y() - mean_y;
-    double vz = p.z() - mean_z;
+    T vx = p.x() - mean_x;
+    T vy = p.y() - mean_y;
+    T vz = p.z() - mean_z;
     C00 += vx * vx; C01 += vx * vy; C02 += vx * vz;
     C11 += vy * vy; C12 += vy * vz; C22 += vz * vz;
   }
   C00 /= fn; C01 /= fn; C02 /= fn;
   C11 /= fn; C12 /= fn; C22 /= fn;
 
-  vnl_matrix<double> C(3, 3);
   C[0][0] = C00;   C[0][1] = C01; C[1][0] = C01; C[0][2] = C02; C[2][0] = C02;
   C[1][1] = C11;   C[1][2] = C12; C[2][1] = C12; C[2][2] = C22;
-  if(bvgl_debug) std::cout << "C\n" << C << std::endl;
-  vnl_symmetric_eigensystem<double> eigen(C);
+  return true;
+}
+template <class T>
+void bvgl_ptset_3d_ops<T>::R_to_diagonalize_covar(vnl_matrix_fixed<T, 3, 3> C, vnl_matrix_fixed<T,3,3>& R, std::vector<T>& lambda){
+//cast to double for numerical accuracy
+  vnl_matrix<double> Cd(3, 3);
+  for (size_t r = 0; r < 3; ++r)
+    for (size_t c = 0; c < 3; c++)
+    Cd[r][c] = C[r][c];
+
+  vnl_symmetric_eigensystem<double> eigen(Cd);
   vnl_matrix_fixed<T, 3, 3> m;
   for (size_t r = 0; r < 3; r++)
     for (size_t c = 0; c < 3; c++) {
@@ -165,7 +172,6 @@ bool bvgl_ptset_3d_ops<T>::R_to_diagonalize_covar(vgl_pointset_3d<T> const& ptse
     R = m;
   }
   if(bvgl_debug) std::cout << "check if R diagonalizes C \n" << m * Cf * m.transpose() << std::endl;
-  return true;
 }
 template <class T>
 vgl_pointset_3d<T>  bvgl_ptset_3d_ops<T>::Rtrans(vgl_pointset_3d<T> const& ptset, vnl_matrix_fixed<T,3,3> const& R){

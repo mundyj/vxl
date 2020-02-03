@@ -37,6 +37,9 @@ public:
  bvgl_ptset_3d_ops(vgl_pointset_3d<T> const& ptset){
    set_ptset(ptset);
  }
+ // some algorithms require efficient access to neigboring points
+ // this method intializes the k nearest neighbor index that
+ // makes use of parallel execution. ptset is assumed to be points only
  void set_ptset(vgl_pointset_3d<T> const& ptset){
     ptset_ = ptset;
     knn_ = bvgl_k_nearest_neighbors_3d<T>(ptset_);
@@ -55,28 +58,33 @@ public:
  //: remove points that are outliers to a local planar fit
  void remove_noise(T radius, T dist_tol, size_t n_nbrs);
 
- //: find the rotation to diagonalize the covariance matrix of the pointset
- static bool R_to_diagonalize_covar(vgl_pointset_3d<T> const& ptset, vnl_matrix_fixed<T,3,3>& R,
-                                    std::vector<T>& lambda,  T frac_ptset = T(1));
+ //: covariance matrix, C, of a pointset. A random fraction of the points is used for speed.
+ static bool covariance_matrix(vgl_pointset_3d<T> const& ptset, vnl_matrix_fixed<T, 3, 3>& C, T frac_ptset = T(1));
+
+ //: find the rotation to diagonalize the covariance matrix, C, of a pointset
+ // if the rotation is improper, the sense of the eigenvector with the smallest eigenvalue is reversed
+ static void R_to_diagonalize_covar(vnl_matrix_fixed<T, 3, 3> C, vnl_matrix_fixed<T,3,3>& R, std::vector<T>& lambda);
  
  //: rotate a pointset with a 3x3 matrix 
  static vgl_pointset_3d<T> Rtrans(vgl_pointset_3d<T> const& ptset, vnl_matrix_fixed<T,3,3> const& R);
 
- //: transform a pointset with a similarity transform (translate_first = true means translate then scale and rotate)
- // translate_first = false means rotate and scale then translate
+ //: transform a pointset with a similarity transform. translate_first = true means translate then scale and rotate.
+ // translate_first = false means rotate and scale then translate.
  static vgl_pointset_3d<T> Strans(vgl_pointset_3d<T> const& ptset, T scale, vnl_matrix_fixed<T,3,3> const& R,
                                   vnl_vector_fixed<T,3> const& t, bool translate_first = true);
 
+ //: accsesors to pointsets that are produced using the knn index
+ // i.e., are members of this class
  const vgl_pointset_3d<T>& scalar_result() const {return ptset_with_scalar_result_;}
  const bvgl_k_nearest_neighbors_3d<T>& knn(){return knn_;}
  const vgl_pointset_3d<T>& result(){return ptset_result_;}
 
 
  private:
-  vgl_pointset_3d<T> ptset_;
-  vgl_pointset_3d<T> ptset_result_;
-  vgl_pointset_3d<T> ptset_with_scalar_result_;//e.g. scalar is roughness
-  bvgl_k_nearest_neighbors_3d<T> knn_;
+ vgl_pointset_3d<T> ptset_;        // the input pointset assumed not to have normals or scalars
+ vgl_pointset_3d<T> ptset_result_; // the output pointset
+ vgl_pointset_3d<T> ptset_with_scalar_result_;//output with a generated scalar e.g. scalar is roughness
+ bvgl_k_nearest_neighbors_3d<T> knn_;
 };
 
 
