@@ -149,14 +149,14 @@ class bsgm_prob_pairwise_dsm
     init_dynamic_range_table();
     H0_.fill(NAN);
     H1_.fill(NAN);
-    sun_dir_0_.set(0.0, 0.0, 0.0);
-    sun_dir_1_.set(0.0, 0.0, 0.0);
+    sun_dir_0_.set(0.0f, 0.0f, 0.0f);
+    sun_dir_1_.set(0.0f, 0.0f, 0.0f);
   }
   //: the sun direction vectors are in East North Up Cartesian coordinates
   bsgm_prob_pairwise_dsm(vil_image_view_base_sptr const& view0, CAM_T const& cam0,
                          vil_image_view_base_sptr const& view1, CAM_T const& cam1,
-                         vgl_vector_3d<double> const& sun_dir_0 = vgl_vector_3d<double>(0.0, 0.0, 0.0),
-                         vgl_vector_3d<double> const& sun_dir_1 = vgl_vector_3d<double>(0.0, 0.0, 0.0))
+                         vgl_vector_3d<float> const& sun_dir_0 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f),
+                         vgl_vector_3d<float> const& sun_dir_1 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f))
   {
     set_images_and_cams(view0, cam0, view1, cam1);
     init_dynamic_range_table();
@@ -169,8 +169,8 @@ class bsgm_prob_pairwise_dsm
   //: the sun direction vectors are in East North Up Cartesian coordinates
   bsgm_prob_pairwise_dsm(vil_image_resource_sptr const& resc0, CAM_T const& cam0,
                          vil_image_resource_sptr const& resc1, CAM_T const& cam1,
-                         vgl_vector_3d<double> const& sun_dir_0 = vgl_vector_3d<double>(0.0, 0.0, 0.0),
-                         vgl_vector_3d<double> const& sun_dir_1 = vgl_vector_3d<double>(0.0, 0.0, 0.0)
+                         vgl_vector_3d<float> const& sun_dir_0 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f),
+                         vgl_vector_3d<float> const& sun_dir_1 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f)
                          )
   {
     set_images_and_cams(resc0, cam0, resc1, cam1);
@@ -183,8 +183,8 @@ class bsgm_prob_pairwise_dsm
   //: the sun direction vectors are in East North Up Cartesian coordinates
   bsgm_prob_pairwise_dsm(vil_image_view<PIX_T> const& view0, CAM_T const& cam0,
                          vil_image_view<PIX_T> const& view1, CAM_T const& cam1,
-                         vgl_vector_3d<double> const& sun_dir_0 = vgl_vector_3d<double>(0.0, 0.0, 0.0),
-                         vgl_vector_3d<double> const& sun_dir_1 = vgl_vector_3d<double>(0.0, 0.0, 0.0))
+                         vgl_vector_3d<float> const& sun_dir_0 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f),
+                         vgl_vector_3d<float> const& sun_dir_1 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f))
   {
     set_images_and_cams(view0, cam0, view1, cam1);
     init_dynamic_range_table();
@@ -200,8 +200,8 @@ class bsgm_prob_pairwise_dsm
   // the sun direction vectors are in East North Up Cartesian coordinates
   void set_images_and_cams(vil_image_view_base_sptr const& view0, CAM_T const& cam0,
                            vil_image_view_base_sptr const& view1, CAM_T const& cam1,
-                           vgl_vector_3d<double> const& sun_dir_0 = vgl_vector_3d<double>(0.0, 0.0, 0.0),
-                           vgl_vector_3d<double> const& sun_dir_1 = vgl_vector_3d<double>(0.0, 0.0, 0.0))
+                           vgl_vector_3d<float> const& sun_dir_0 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f),
+                           vgl_vector_3d<float> const& sun_dir_1 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f))
   {
     rip_.set_images(view0, view1);
     this->set_cameras(cam0, cam1);
@@ -211,8 +211,8 @@ class bsgm_prob_pairwise_dsm
 
   void set_images_and_cams(vil_image_view<PIX_T> const& view0, CAM_T const& cam0,
                            vil_image_view<PIX_T> const& view1, CAM_T const& cam1,
-                           vgl_vector_3d<double> const& sun_dir_0 = vgl_vector_3d<double>(0.0, 0.0, 0.0),
-                           vgl_vector_3d<double> const& sun_dir_1 = vgl_vector_3d<double>(0.0, 0.0, 0.0))
+                           vgl_vector_3d<float> const& sun_dir_0 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f),
+                           vgl_vector_3d<float> const& sun_dir_1 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f))
   {
     vil_image_resource_sptr resc0_ptr = vil_new_image_resource_of_view(view0);
     vil_image_resource_sptr resc1_ptr = vil_new_image_resource_of_view(view1);
@@ -224,8 +224,8 @@ class bsgm_prob_pairwise_dsm
 
   void set_images_and_cams(vil_image_resource_sptr const& resc0, CAM_T const& cam0,
                            vil_image_resource_sptr const& resc1, CAM_T const& cam1,
-                           vgl_vector_3d<double> const& sun_dir_0 = vgl_vector_3d<double>(0.0, 0.0, 0.0),
-                           vgl_vector_3d<double> const& sun_dir_1 = vgl_vector_3d<double>(0.0, 0.0, 0.0))
+                           vgl_vector_3d<float> const& sun_dir_0 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f),
+                           vgl_vector_3d<float> const& sun_dir_1 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f))
   {
     rip_.set_images(resc0, resc1);
     this->set_cameras(cam0, cam1);
@@ -335,6 +335,10 @@ class bsgm_prob_pairwise_dsm
 
   //: image rectification
   void rectify();
+
+  //: shadow weighting during dynamic programming 
+  //  rectification must be executed before calling
+  void set_shadow_weighting_data();
 
   //: compute disparities
   // fwd: arg order rectified image0:image1
@@ -503,8 +507,10 @@ class bsgm_prob_pairwise_dsm
     bits_per_pix_factors_[8] = 1.0f;
     bits_per_pix_factors_[11] = 2.8f;
   }
-  vgl_vector_3d<double> sun_dir_0_;
-  vgl_vector_3d<double> sun_dir_1_;
+  vgl_vector_3d<float> sun_dir_0_;
+  vgl_vector_3d<float> sun_dir_1_;
+  vgl_vector_2d<float> dp_bias_dir_0_;
+  vgl_vector_2d<float> dp_bias_dir_1_;
   bool affine_;  // vs. perspective
   pairwise_params params_;
   CAM_T cam0_;

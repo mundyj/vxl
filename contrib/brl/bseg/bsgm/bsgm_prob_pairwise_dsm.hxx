@@ -621,7 +621,50 @@ bool bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::save_prob_ptset_color(std::string con
   ostr.close();
   return true;
 }
-
+template <class CAM_T, class PIX_T>
+void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::set_shadow_weighting_data(){
+  bool shadow_weighting_enabled = params_.de_params_.bias_weight > 0.0f;
+  if(!shadow_weighting_enabled)
+    return;
+  bool null_sun_dir_vectors = (sun_dir_0_ == vgl_vector_3d<float>(0.0f, 0.0f, 0.0f));
+  null_sun_dir_vectors = null_sun_dir_vectors || (sun_dir_1_ == vgl_vector_3d<float>(0.0f, 0.0f, 0.0f));
+  if(shadow_weighting_enabled && null_sun_dir_vectors)
+    std::runtime_error("shadow dp weighting enabled but null sun direction vectors - can't proceed");
+  // project 3-d sun direction vector into rectified image space
+  // assumes rectification has been executed
+  // cameras are in local vertical CS (lvcs) equivalent to East North Up (enu) coordinates
+  // the 3-d sun direction vector is also in enu coordinates
+  vnl_matrix_fixed<double, 3, 4> m0 = rect_cam0_.get_matrix();
+  vnl_matrix_fixed<double, 3, 4> m1 = rect_cam1_.get_matrix();
+  bool affine = (m0[2][0] == 0.0) && (m0[2][1] == 0.0) && (m0[2][2] == 0.0);
+  // note that a vector in 3-d has 4-d homogenous coordinates with scale factor 0
+  vnl_vector_fixed<double, 4> sun_vector_3d_0(sun_dir_0_.x(), sun_dir_0_.y(), sun_dir_0_.z(), 0.0);
+  vnl_vector_fixed<double, 4> sun_vector_3d_1(sun_dir_1_.x(), sun_dir_1_.y(), sun_dir_1_.z(), 0.0);
+  // the sun direction vector in rectified image space
+  vnl_vector_fixed<double, 3> sun_vector_2d_0 = m0*sun_vector_3d_0;
+  vnl_vector_fixed<double, 3> sun_vector_2d_1 = m1*sun_vector_3d_1;
+  if(affine){
+    dp_bias_dir_0_.set(sun_vector_2d_0[0], sun_vector_2d_0[1]);
+    dp_bias_dir_1_.set(sun_vector_2d_0[0], sun_vector_2d_0[1]);
+    // convert to unit vectors
+    dp_bias_dir_0_ /= dp_bias_dir_0_.length();
+    dp_bias_dir_1_ /= dp_bias_dir_1_.length();
+    return;
+  }
+  // a perspective camera can project a vector into a finite image point, i.e. vanishing points
+  // so the sun direction in image space is no longer constant but varies with position.
+  //  ====================================================|
+  //  |                                                   |
+  //  |                    vanishing point                |
+  //  |       ------------------o------------------       |
+  //  |                       /---\          horizon line |            
+  //  |                      /-----\                      |
+  //  |                     /-------\                     |
+  //  |                    /---------\                    |
+  //  | image space     long cast shadow                  |
+  //  =====================================================
+  std::runtime_error("shadow dp weighting not implemented for the perspective camera");
+}
 #undef BSGM_PROB_PAIRWISE_DSM_INSTANTIATE
 #define BSGM_PROB_PAIRWISE_DSM_INSTANTIATE(CAMT, PIXT) \
 template class bsgm_prob_pairwise_dsm<CAMT, PIXT>
