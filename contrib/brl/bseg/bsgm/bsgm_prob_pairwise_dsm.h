@@ -375,6 +375,9 @@ class bsgm_prob_pairwise_dsm
     // rectification
     this->rectify();
 
+    // provide shadow direction information if needed
+    this->set_shadow_weighting_data();
+
     // compute forward disparity & height
     this->compute_disparity_fwd();
     this->compute_height_fwd(compute_fwd_rev_ptsets_hmaps);
@@ -511,7 +514,7 @@ class bsgm_prob_pairwise_dsm
   vgl_vector_3d<float> sun_dir_1_;
   vgl_vector_2d<float> dp_bias_dir_0_;
   vgl_vector_2d<float> dp_bias_dir_1_;
-  bool affine_;  // vs. perspective
+
   pairwise_params params_;
   CAM_T cam0_;
   CAM_T cam1_;

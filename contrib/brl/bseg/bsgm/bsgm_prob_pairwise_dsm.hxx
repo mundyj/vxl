@@ -211,6 +211,13 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::compute_disparity(
   float invalid_disp = NAN; //required for triangulation implementation
   bool good = true;
   float dynamic_range_factor = bits_per_pix_factors_[params_.effective_bits_per_pixel_];
+  bool shadow_weighting_enabled = params_.de_params_.bias_weight > 0.0f;
+  if(shadow_weighting_enabled){
+    if(forward)
+      params_.de_params_.bias_dir = dp_bias_dir_0_;
+    else
+      params_.de_params_.bias_dir = dp_bias_dir_1_;
+  }
   bsgm_compute_invalid_map<PIX_T>(img, img_reference, invalid, min_disparity_,
                                   num_disparities(), border_val, img_window);
   if (params_.coarse_dsm_disparity_estimate_) {
