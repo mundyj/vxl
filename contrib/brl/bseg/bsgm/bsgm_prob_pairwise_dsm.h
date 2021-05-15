@@ -395,6 +395,7 @@ class bsgm_prob_pairwise_dsm
       }
     } else this->compute_ptset();
 
+    this->display_sun_dir_rect_bviews();
     return true;
   }
 
@@ -488,6 +489,9 @@ class bsgm_prob_pairwise_dsm
     vil_image_view<float>& tri_3d,
     vgl_pointset_3d<float>& ptset,
     vil_image_view<float>& heightmap);
+
+  // display sun dir 
+  void display_sun_dir_rect_bviews();
 
   // z vs disparity scale
   bool z_vs_disparity_scale(double& scale) const;

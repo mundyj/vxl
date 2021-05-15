@@ -18,7 +18,7 @@
 #include <bpgl/algo/bpgl_3d_from_disparity.h>
 #include <bpgl/algo/bpgl_heightmap_from_disparity.h>
 #include <bpgl/algo/rectify_params.h>
-
+#include <brip/brip_line_generator.h>
 #define debug_print false
 
 
@@ -217,6 +217,7 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::compute_disparity(
       params_.de_params_.bias_dir = dp_bias_dir_0_;
     else
       params_.de_params_.bias_dir = dp_bias_dir_1_;
+    std::cout << "PROCESSING WITH SUNDIR " << params_.de_params_.bias_dir << std::endl;
   }
   bsgm_compute_invalid_map<PIX_T>(img, img_reference, invalid, min_disparity_,
                                   num_disparities(), border_val, img_window);
@@ -633,6 +634,8 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::set_shadow_weighting_data(){
   bool shadow_weighting_enabled = params_.de_params_.bias_weight > 0.0f;
   if(!shadow_weighting_enabled)
     return;
+  std::cout <<"3-d sun direction vector 0 " << sun_dir_0_ << std::endl;
+  std::cout <<"3-d sun direction vector 1 " << sun_dir_1_ << std::endl;
   bool null_sun_dir_vectors = (sun_dir_0_ == vgl_vector_3d<float>(0.0f, 0.0f, 0.0f));
   null_sun_dir_vectors = null_sun_dir_vectors || (sun_dir_1_ == vgl_vector_3d<float>(0.0f, 0.0f, 0.0f));
   if(shadow_weighting_enabled && null_sun_dir_vectors)
@@ -650,7 +653,10 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::set_shadow_weighting_data(){
   // the sun direction vector in rectified image space
   vnl_vector_fixed<double, 3> sun_vector_2d_0 = m0*sun_vector_3d_0;
   vnl_vector_fixed<double, 3> sun_vector_2d_1 = m1*sun_vector_3d_1;
+  std::cout << " vnl sun vector 2d 0 " << sun_vector_2d_0 << std::endl;
+  std::cout << " vnl sun vector 2d 1 " << sun_vector_2d_0 << std::endl;
   if(affine){
+    std::cout << "Handling affine case" << std::endl;
     dp_bias_dir_0_.set(sun_vector_2d_0[0], sun_vector_2d_0[1]);
     dp_bias_dir_1_.set(sun_vector_2d_0[0], sun_vector_2d_0[1]);
     // convert to unit vectors
@@ -658,7 +664,7 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::set_shadow_weighting_data(){
     dp_bias_dir_1_ /= dp_bias_dir_1_.length();
     return;
   }
-  // a perspective camera can project a vector into a finite image point, i.e. vanishing points
+  // a perspective camera can project a vector into a finite image point, i.e. shadow vanishing point
   // so the sun direction in image space is no longer constant but varies with position.
   //  ====================================================|
   //  |                                                   |
@@ -671,6 +677,40 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::set_shadow_weighting_data(){
   //  | image space     long cast shadow                  |
   //  =====================================================
   std::runtime_error("shadow dp weighting not implemented for the perspective camera");
+}
+template <class CAM_T, class PIX_T>
+void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::display_sun_dir_rect_bviews(){
+  bool shadow_weighting_enabled = params_.de_params_.bias_weight > 0.0f;
+  if(!shadow_weighting_enabled)
+    return;// no shadow information
+  std::cout << "displaying shadow dir" << std::endl;
+  double pmaxd = std::pow(2.0, params_.effective_bits_per_pixel_)-1.0;
+  PIX_T pmax = static_cast<PIX_T>(pmaxd);
+  int ni = rect_bview0_.ni(), nj = rect_bview0_.nj();
+  // center of image
+  float xs = ni/2.0f, ys = nj/2.0f;
+  // assume the image is at least 200x200 pixels
+  float dx = 100.0f*dp_bias_dir_0_.x(), dy = 100.0f*dp_bias_dir_0_.y();
+  float xe = xs+dx, ye = ys+dy;
+  float x, y;
+  bool init = true;
+  while (brip_line_generator::generate(init, xs, ys, xe, ye, x, y))
+   {
+     int xi = (int)x, yi = (int)y; //convert the pixel location to integer
+     if(xi<0) xi = 0; if(xi>=ni) xi = ni-1;
+     if(yi<0) yi = 0; if(yi>=nj) yi = nj-1;
+     rect_bview0_(xi, yi) = pmax;
+   }
+  dx = 100.0f*dp_bias_dir_1_.x(); dy = 100.0f*dp_bias_dir_1_.y();
+  xe = xs+dx; ye = ys+dy;
+  init = true;
+  while (brip_line_generator::generate(init, xs, ys, xe, ye, x, y))
+   {
+     int xi = (int)x, yi = (int)y; //convert the pixel location to integer
+     if(xi<0) xi = 0; if(xi>=ni) xi = ni-1;
+     if(yi<0) yi = 0; if(yi>=nj) yi = nj-1;
+     rect_bview1_(xi, yi) = pmax;
+   } 
 }
 #undef BSGM_PROB_PAIRWISE_DSM_INSTANTIATE
 #define BSGM_PROB_PAIRWISE_DSM_INSTANTIATE(CAMT, PIXT) \
