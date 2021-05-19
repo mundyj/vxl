@@ -409,11 +409,11 @@ bsgm_disparity_estimator::run_multi_dp(
     // Calculate directional weight if necessary
     float dir_weight = 1.0f;
     if (using_bias) {
-      //vgl_vector_2d<float> dp_dir((float)dx, -(float)dy);
+      // note that (dx, dy) is a vector opposite to the dp scan direction
       vgl_vector_2d<float> dp_dir((float)dx, (float)dy);
       dp_dir = normalize(dp_dir);
-      dp_dir *= -1.0f; //low interpolation weight in shadow direction
-      float cosa = dot_product(dp_dir, bias_dir);
+      // so for a scan in the shadow direction the cosa ~ -1.
+      float cosa = dot_product(dp_dir, bias_dir); 
       dir_weight = 1.0f - bias_weight*0.5f*(1.0f - cosa);
       //std::cout << "in dynamic program: (dx dy) ("<< dx << ' ' << dy << ") dp_dir "<< dp_dir << " bias dir " << bias_dir << " cosa = " << cosa << " dir weight = " << dir_weight << std::endl;
     }
