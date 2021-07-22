@@ -29,6 +29,17 @@ void bsgm_check_shadows(
   unsigned short shadow_thresh,
   const vgl_box_2d<int>& img_window = vgl_box_2d<int>());
 
+//: Invalidate disparity pixels with intensity gradient in shadow dir
+template <class T>
+void bsgm_check_shadow_gradient(
+  vil_image_view<float>& disp_img,
+  const vil_image_view<T>& img_tar,
+  const vil_image_view<T>& img_ref,
+  const vgl_vector_2d<double>& sun_dir,
+  int shadow_high,
+  int shadow_low,
+  float shadow_gradient_thresh,
+  float invalid_disparity);
 
 //: Use the OpenCV SGM uniqueness criteria to find bad disparities. This
 // is not quite the same as the left-right consistency check from the SGM
