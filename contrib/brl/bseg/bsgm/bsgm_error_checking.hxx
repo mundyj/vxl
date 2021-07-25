@@ -10,7 +10,10 @@
 //#include <utility>
 #include <algorithm>
 #include <vgl/vgl_box_2d.h>
+#include <vgl/vgl_vector_2d.h>
 #include <vil/vil_image_view.h>
+#include <vil/algo/vil_gauss_filter.h>
+#include <vil/algo/vil_sobel_3x3.h>
 #include "bsgm_error_checking.h"
 
 template <class T>
@@ -47,11 +50,11 @@ void bsgm_check_shadows(
   }
 }
 template <class T>
-void bsgm_remove_shadow_overhang{
+void bsgm_remove_shadow_overhang(
   vil_image_view<float>& disp_img,
   const vil_image_view<T>& img_tar,
   const vil_image_view<T>& img_ref,
-  const vgl_vector_2d<double>& sun_dir,
+  const vgl_vector_2d<float>& sun_dir,
   int shadow_high,
   int shadow_low,
   float shadow_gradient_thresh,
@@ -88,12 +91,12 @@ void bsgm_remove_shadow_overhang{
         if(tar_pix > shadow_high && ref_pix > shadow_high)
           continue;
         // check shadow gradient
-        vgl_vector_2d<double> grad_dir(grad_x_tar(x,y), grad_y_tar(x,y));
+        vgl_vector_2d<float> grad_dir(grad_x_tar(x,y), grad_y_tar(x,y));
         double gmag = grad_dir.length();
         if (gmag < 1.0)
           continue;
         grad_dir /=gmag; //normalize
-        double dp = dot_product(grad_dir, sun_dir);
+        float dp = dot_product(grad_dir, sun_dir);
         if(dp < 0.0)
           disp_img(x, y) = invalid_disparity;
       }
@@ -474,7 +477,7 @@ template void bsgm_check_nonunique(vil_image_view<float>& , const vil_image_view
                                    const vil_image_view<T>&, float, unsigned short, int,          \
                                    const vgl_box_2d<int>&);                                       \
 template void bsgm_remove_shadow_overhang(vil_image_view<float>&, const vil_image_view<T>&,       \
-                                          const vil_image_view<T>&, const vgl_vector_2d<double>&, \
+                                          const vil_image_view<T>&, const vgl_vector_2d<float>&, \
                                           int, int, float, float)
 
 #endif // bsgm_error_checking_h_
