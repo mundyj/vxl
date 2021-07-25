@@ -74,7 +74,7 @@ struct bsgm_disparity_estimator_params
   // 0 to disable biasing.
   float bias_weight;
   vgl_vector_2d<float> bias_dir;
-
+  bool remove_shadow_overhang;
   //: Appearance costs computed by different algorithms are statically fused
   // using these weights. Set any to <= 0 to prevent computation.
   float census_weight;
@@ -107,7 +107,8 @@ struct bsgm_disparity_estimator_params
     xgrad_weight(0.7f),
     census_tol(2),
     census_rad(2),
-    print_timing(false){}
+    print_timing(false),
+    remove_shadow_overhang(false){}
 
 };
 

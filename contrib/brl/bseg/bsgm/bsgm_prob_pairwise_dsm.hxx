@@ -212,13 +212,18 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::compute_disparity(
   float invalid_disp = NAN; //required for triangulation implementation
   bool good = true;
   float dynamic_range_factor = bits_per_pix_factors_[params_.effective_bits_per_pixel_];
-  bool shadow_weighting_enabled = params_.de_params_.bias_weight > 0.0f;
+
+  bool null_bias_dirs = dp_bias_dir_0_ == vgl_vector_2d<float>(0.0f, 0.0f);
+  null_bias_dirs = null_bias_dirs || dp_bias_dir_1_ == vgl_vector_2d<float>(0.0f, 0.0f);
+
+  bool shadow_context_enabled = !null_bias_dirs;
   if(shadow_weighting_enabled){
     if(forward)
       params_.de_params_.bias_dir = dp_bias_dir_0_;
     else
       params_.de_params_.bias_dir = dp_bias_dir_1_;
   }
+
   bsgm_compute_invalid_map<PIX_T>(img, img_reference, invalid, min_disparity_,
                                   num_disparities(), border_val, img_window);
   if (params_.coarse_dsm_disparity_estimate_) {
@@ -630,14 +635,14 @@ bool bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::save_prob_ptset_color(std::string con
   return true;
 }
 template <class CAM_T, class PIX_T>
-void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::set_shadow_weighting_data(){
-  bool shadow_weighting_enabled = params_.de_params_.bias_weight > 0.0f;
-  if(!shadow_weighting_enabled)
-    return;
+void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::set_shadow_context_data(){
   bool null_sun_dir_vectors = (sun_dir_0_ == vgl_vector_3d<float>(0.0f, 0.0f, 0.0f));
   null_sun_dir_vectors = null_sun_dir_vectors || (sun_dir_1_ == vgl_vector_3d<float>(0.0f, 0.0f, 0.0f));
-  if(shadow_weighting_enabled && null_sun_dir_vectors)
-    std::runtime_error("shadow dp weighting enabled but null sun direction vectors - can't proceed");
+  bool shadow_context_enabled = !null_sun_dir_vectors;
+  dp_bias_dir_0_.set(0.0f, 0.0f);
+  dp_bias_dir_1_.set(0.0f, 0.0f);
+  if(!shadow_context_enabled)
+    return;
   // project 3-d sun direction vector into rectified image space
   // assumes rectification has been executed
   // cameras are in local vertical CS (lvcs) equivalent to East North Up (enu) coordinates

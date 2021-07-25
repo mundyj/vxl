@@ -339,7 +339,7 @@ class bsgm_prob_pairwise_dsm
 
   //: shadow context processing and weighting during dynamic programming 
   //  rectification must be executed before calling
-  void set_shadow_weighting_data();
+  void set_shadow_context_data();
 
   //: compute disparities
   // fwd: arg order rectified image0:image1
@@ -375,6 +375,10 @@ class bsgm_prob_pairwise_dsm
     }
     // rectification
     this->rectify();
+
+    // shadow weighted dynamic program
+    // and other context uses
+    this->set_shadow_context_data();
 
     // compute forward disparity & height
     this->compute_disparity_fwd();
