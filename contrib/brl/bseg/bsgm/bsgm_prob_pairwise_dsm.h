@@ -337,6 +337,10 @@ class bsgm_prob_pairwise_dsm
   //: image rectification
   void rectify();
 
+  //: shadow context processing and weighting during dynamic programming 
+  //  rectification must be executed before calling
+  void set_shadow_weighting_data();
+
   //: compute disparities
   // fwd: arg order rectified image0:image1
   // rev: arg order rectified image1:image0
