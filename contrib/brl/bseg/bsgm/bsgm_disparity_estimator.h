@@ -627,7 +627,7 @@ bool bsgm_disparity_estimator::compute(
 
     int shadow_high = 200;
     int shadow_low = 50;
-    bsgm_remove_shadow_overhang<T>(disp_tar, img_tar, img_ref, bias_dir, shadow_high, shadow_low, 0.0f, invalid_disp);
+    bsgm_remove_shadow_overhang<T>(disp_tar, img_tar, img_ref, params_.bias_dir, shadow_high, shadow_low, 0.0f, invalid_disp);
 
     if ( params_.error_check_mode > 0) {
       bsgm_check_nonunique<T>( disp_tar, disp_cost,
