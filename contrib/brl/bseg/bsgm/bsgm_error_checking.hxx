@@ -46,7 +46,60 @@ void bsgm_check_shadows(
     }
   }
 }
-
+template <class T>
+void bsgm_remove_shadow_overhang{
+  vil_image_view<float>& disp_img,
+  const vil_image_view<T>& img_tar,
+  const vil_image_view<T>& img_ref,
+  const vgl_vector_2d<double>& sun_dir,
+  int shadow_high,
+  int shadow_low,
+  float shadow_gradient_thresh,
+  float invalid_disparity)
+{
+  //compute intensity gradient
+  vil_gauss_filter_5tap_params gauss_params(0.75);
+  vil_image_view<T> gauss_img_tar;
+  vil_gauss_filter_5tap(img_tar, gauss_img_tar, gauss_params);
+  vil_image_view<float> grad_x_tar, grad_y_tar;
+  vil_sobel_3x3<T,float>(gauss_img_tar, grad_x_tar, grad_y_tar);
+  // check shadow gradient
+  int w = disp_img.ni(), h = disp_img.nj();
+  int nir = img_ref.ni();
+  for (int y = 2; y < (h-2); y++) {
+    for (int x = 2; x < (w-2); x++) {
+      if (std::isnan(invalid_disparity) && std::isnan(disp_img(x, y))) {
+        continue;
+      } else if (disp_img(x, y) == invalid_disparity) {
+        continue;
+      } else {
+        if((x == 571 && y == 1165)||x == 580 && y == 585)
+          std::cout << "found it" << std::endl;
+        int disp = static_cast<int>(disp_img(x, y));
+        int xd = x + disp;
+        if(xd>=nir)
+          continue;
+        int tar_pix = static_cast<int>(img_tar(x, y));
+        int ref_pix = static_cast<int>(img_ref(xd, y));
+        if(tar_pix < shadow_low || ref_pix< shadow_low){
+          disp_img(x, y) = invalid_disparity;
+          continue;
+        }
+        if(tar_pix > shadow_high && ref_pix > shadow_high)
+          continue;
+        // check shadow gradient
+        vgl_vector_2d<double> grad_dir(grad_x_tar(x,y), grad_y_tar(x,y));
+        double gmag = grad_dir.length();
+        if (gmag < 1.0)
+          continue;
+        grad_dir /=gmag; //normalize
+        double dp = dot_product(grad_dir, sun_dir);
+        if(dp < 0.0)
+          disp_img(x, y) = invalid_disparity;
+      }
+    }
+  }
+}
 template <class T>
 void bsgm_check_nonunique(
   vil_image_view<float>& disp_img,
@@ -409,16 +462,19 @@ void bsgm_interpolate_errors(
 }
 #undef BSGM_ERROR_CHECKING_INSTANTIATE
 #define BSGM_ERROR_CHECKING_INSTANTIATE(T) \
-template void bsgm_check_shadows(vil_image_view<float>& , const vil_image_view<T>&, \
-                                 float, unsigned short, const vgl_box_2d<int>&); \
+template void bsgm_check_shadows(vil_image_view<float>& , const vil_image_view<T>&,               \
+                                 float, unsigned short, const vgl_box_2d<int>&);                  \
 template void bsgm_interpolate_errors(vil_image_view<float>& ,const vil_image_view<bool>&,        \
                                       const vil_image_view<T>&,  float, unsigned short,           \
-                                      const vgl_box_2d<int>&);                                 \
+                                      const vgl_box_2d<int>&);                                    \
 template void bsgm_compute_invalid_map(const vil_image_view<T>& , const vil_image_view<T>&,       \
                                        vil_image_view<bool>& , int, int, T,                       \
-                                       const vgl_box_2d<int>&);                                \
+                                       const vgl_box_2d<int>&);                                   \
 template void bsgm_check_nonunique(vil_image_view<float>& , const vil_image_view<unsigned short>&,\
                                    const vil_image_view<T>&, float, unsigned short, int,          \
-                                   const vgl_box_2d<int>&)
+                                   const vgl_box_2d<int>&);                                       \
+template void bsgm_remove_shadow_overhang(vil_image_view<float>&, const vil_image_view<T>&,       \
+                                          const vil_image_view<T>&, const vgl_vector_2d<double>&, \
+                                          int, int, float, float)
 
 #endif // bsgm_error_checking_h_
