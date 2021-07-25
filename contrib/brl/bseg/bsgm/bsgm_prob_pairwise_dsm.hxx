@@ -217,7 +217,7 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::compute_disparity(
   null_bias_dirs = null_bias_dirs || dp_bias_dir_1_ == vgl_vector_2d<float>(0.0f, 0.0f);
 
   bool shadow_context_enabled = !null_bias_dirs;
-  if(shadow_weighting_enabled){
+  if(shadow_context_enabled){
     if(forward)
       params_.de_params_.bias_dir = dp_bias_dir_0_;
     else
