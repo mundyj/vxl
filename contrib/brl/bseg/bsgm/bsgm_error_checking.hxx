@@ -9,14 +9,16 @@
 //#include <sstream>
 //#include <utility>
 #include <algorithm>
+#include <tuple>
 #include <vgl/vgl_box_2d.h>
+#include <vgl/vgl_point_2d.h>
 #include <vgl/vgl_vector_2d.h>
 #include <vil/vil_image_view.h>
 #include <vil/vil_save.h>
 #include <vil/algo/vil_gauss_filter.h>
 #include <vil/algo/vil_sobel_3x3.h>
 #include "bsgm_error_checking.h"
-
+#include <brip/brip_line_generator.h>
 template <class T>
 void bsgm_check_shadows(
   vil_image_view<float>& disp_img,
@@ -61,6 +63,42 @@ void bsgm_remove_shadow_overhang(
   float shadow_gradient_thresh,
   float invalid_disparity)
 {
+ // compute scan pixels
+  float thresh = 1000;
+  vgl_point_2d<float> p0(0.0f, 0.0f), pp, pm;
+  pm = p0 + 2.0 * sun_dir;
+  pp = p0 - 2.0 * sun_dir;
+  float xs = pm.x(), ys = pm.y();
+  float xe = pp.x(), ye = pp.y();
+  std::cout << "xs, ys, xe, ye " << xs << ' ' << ys << ' ' << xe << ' ' << ye << std::endl;
+  bool init = true;
+  int start = -2;
+  float x, y;
+  std::vector<std::tuple<int, int, int> > pix_offset;
+  while (brip_line_generator::generate(init, xs, ys, xe, ye, x, y))
+    pix_offset.push_back(std::tuple<int, int, int>(int(x), int(y), start++ ));
+  int ni = img_tar.ni(), nj = img_tar.nj(), ns = pix_offset.size();
+  int sumc = 0;
+  for (int k = 0; k < ns; ++k)
+    sumc += abs(std::get<2>(pix_offset[k]));
+  vil_image_view<float> sun_scan(ni, nj);
+  sun_scan.fill(0.0f);
+  for(int j = 3; j<(nj-3); ++j)
+    for (int i = 3; i < (ni-3); ++i) {
+      float sum = 0.0f;
+      for (int k = 0; k < ns; ++k) {
+        int di = std::get<0>(pix_offset[k]);
+        int dj = std::get<1>(pix_offset[k]);
+        int w = std::get<2>(pix_offset[k]);
+        //std::cout << di << ' ' << dj << ' ' << w << std::endl;
+        sum += w*img_tar(i + di, j + dj);
+      }
+      sum /= sumc;
+      sun_scan(i, j) = sum;
+    }
+  std::string path = "D:/tests/buckley/results/sun_scan.tif";
+  vil_save(sun_scan, path.c_str());
+#if 0
   //compute intensity gradient
   vil_gauss_filter_5tap_params gauss_params(0.75);
   vil_image_view<T> gauss_img_tar;
@@ -77,7 +115,7 @@ void bsgm_remove_shadow_overhang(
       if(img_tar(i,j) > shadow_high) dp = 0.0f;
       if(dp<0.0f) disp_img(i,j) = invalid_disparity;
     }
-#if 0
+
   if((w>570 && h > 1137) && (disp_img(570,1137) == -11) && (disp_img(400,650)==-14)){
     size_t nig = grad_x_tar.ni(), njg = grad_x_tar.nj();
     vil_image_view<float> dotp(nig, njg);
@@ -92,7 +130,7 @@ void bsgm_remove_shadow_overhang(
     std::string path = "d:/tests/BuckleyAFB/grad_shadow_dir_dp.tif";
     vil_save(dotp, path.c_str());
   }
-#endif
+
   return;
   // check shadow gradient
   int nir = img_ref.ni();
@@ -129,6 +167,7 @@ void bsgm_remove_shadow_overhang(
       }
     }
   }
+#endif
 }
 template <class T>
 void bsgm_check_nonunique(
