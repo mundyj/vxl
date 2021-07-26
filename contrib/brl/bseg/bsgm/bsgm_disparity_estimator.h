@@ -74,7 +74,9 @@ struct bsgm_disparity_estimator_params
   // 0 to disable biasing.
   float bias_weight;
   vgl_vector_2d<float> bias_dir;
+
   bool remove_shadow_overhang;
+
   //: Appearance costs computed by different algorithms are statically fused
   // using these weights. Set any to <= 0 to prevent computation.
   float census_weight;
@@ -625,9 +627,9 @@ bool bsgm_disparity_estimator::compute(
     bsgm_check_shadows<T>(disp_tar, img_tar, invalid_disp,
                           params_.shadow_thresh, target_window);
 
-    int shadow_high = 200;
+    int shadow_high = 500;
     int shadow_low = 50;
-    bsgm_remove_shadow_overhang<T>(disp_tar, img_tar, img_ref, params_.bias_dir, shadow_high, shadow_low, 0.0f, invalid_disp);
+    // bsgm_remove_shadow_overhang<T>(disp_tar, img_tar, img_ref, params_.bias_dir, shadow_high, shadow_low, 0.0f, invalid_disp);
 
     if ( params_.error_check_mode > 0) {
       bsgm_check_nonunique<T>( disp_tar, disp_cost,

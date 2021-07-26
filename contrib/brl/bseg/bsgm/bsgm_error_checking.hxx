@@ -12,6 +12,7 @@
 #include <vgl/vgl_box_2d.h>
 #include <vgl/vgl_vector_2d.h>
 #include <vil/vil_image_view.h>
+#include <vil/vil_save.h>
 #include <vil/algo/vil_gauss_filter.h>
 #include <vil/algo/vil_sobel_3x3.h>
 #include "bsgm_error_checking.h"
@@ -66,8 +67,34 @@ void bsgm_remove_shadow_overhang(
   vil_gauss_filter_5tap(img_tar, gauss_img_tar, gauss_params);
   vil_image_view<float> grad_x_tar, grad_y_tar;
   vil_sobel_3x3<T,float>(gauss_img_tar, grad_x_tar, grad_y_tar);
+  int w = disp_img.ni(), h = disp_img.nj();  
+  size_t nig = grad_x_tar.ni(), njg = grad_x_tar.nj();
+  for(size_t j = 2; j<(njg-2); ++j)
+    for(size_t i = 2; i<(nig-2);++i){
+      if(i>w || j > h) continue;
+      vgl_vector_2d<float> gvect(grad_x_tar(i,j), grad_y_tar(i,j));
+      float dp = dot_product(sun_dir, gvect);
+      if(img_tar(i,j) > shadow_high) dp = 0.0f;
+      if(dp<0.0f) disp_img(i,j) = invalid_disparity;
+    }
+#if 0
+  if((w>570 && h > 1137) && (disp_img(570,1137) == -11) && (disp_img(400,650)==-14)){
+    size_t nig = grad_x_tar.ni(), njg = grad_x_tar.nj();
+    vil_image_view<float> dotp(nig, njg);
+    dotp.fill(0.0f);
+    for(size_t j = 2; j<(njg-2); ++j)
+      for(size_t i = 2; i<(nig-2);++i){
+        vgl_vector_2d<float> gvect(grad_x_tar(i,j), grad_y_tar(i,j));
+        float dp = dot_product(sun_dir, gvect);
+        if(img_tar(i,j) > shadow_high) dp = 0.0f;
+        dotp(i,j) = dp;
+      }
+    std::string path = "d:/tests/BuckleyAFB/grad_shadow_dir_dp.tif";
+    vil_save(dotp, path.c_str());
+  }
+#endif
+  return;
   // check shadow gradient
-  int w = disp_img.ni(), h = disp_img.nj();
   int nir = img_ref.ni();
   for (int y = 2; y < (h-2); y++) {
     for (int x = 2; x < (w-2); x++) {
@@ -76,12 +103,11 @@ void bsgm_remove_shadow_overhang(
       } else if (disp_img(x, y) == invalid_disparity) {
         continue;
       } else {
-        if((x == 571 && y == 1165)||x == 580 && y == 585)
-          std::cout << "found it" << std::endl;
         int disp = static_cast<int>(disp_img(x, y));
         int xd = x + disp;
         if(xd>=nir)
           continue;
+        bool print = (x == 570 && y == 1137&& disp == -11) ||(x == 400 && y == 650 && disp == -14);
         int tar_pix = static_cast<int>(img_tar(x, y));
         int ref_pix = static_cast<int>(img_ref(xd, y));
         if(tar_pix < shadow_low || ref_pix< shadow_low){
@@ -93,11 +119,12 @@ void bsgm_remove_shadow_overhang(
         // check shadow gradient
         vgl_vector_2d<float> grad_dir(grad_x_tar(x,y), grad_y_tar(x,y));
         double gmag = grad_dir.length();
-        if (gmag < 1.0)
+        if (gmag < 0.5)
           continue;
         grad_dir /=gmag; //normalize
-        float dp = dot_product(grad_dir, sun_dir);
-        if(dp < 0.0)
+        float dp = fabs(dot_product(grad_dir, sun_dir));
+        if(print) std::cout << "disp  grad_dir sun_dir gmag dp " << disp << ' ' << grad_dir << ' ' << sun_dir << ' ' << gmag << ' ' << dp << std::endl;
+        if(dp > 0.5)
           disp_img(x, y) = invalid_disparity;
       }
     }
