@@ -680,8 +680,10 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::set_shadow_context_data(){
 }
 template <class CAM_T, class PIX_T>
 void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::display_sun_dir_rect_bviews(){
-  bool shadow_weighting_enabled = params_.de_params_.bias_weight > 0.0f;
-  if(!shadow_weighting_enabled)
+  bool null_sun_dir_vectors = (sun_dir_0_ == vgl_vector_3d<float>(0.0f, 0.0f, 0.0f));
+  null_sun_dir_vectors = null_sun_dir_vectors || (sun_dir_1_ == vgl_vector_3d<float>(0.0f, 0.0f, 0.0f));
+  bool shadow_context_enabled = !null_sun_dir_vectors;
+  if(!shadow_context_enabled)
     return;// no shadow information
   double pmaxd = std::pow(2.0, params_.effective_bits_per_pixel_)-1.0;
   PIX_T pmax = static_cast<PIX_T>(pmaxd);
