@@ -64,169 +64,312 @@ bsgm_remove_shadow_overhang(vil_image_view<float> & disp_img,
                             float invalid_disparity)
 {
   // compute scan pixels
-  float thresh = 1000;
   vgl_point_2d<float> p0(0.0f, 0.0f), pp, pm;
-  float rad = 6.0f;
+  float rad = 4.0f;
   pm = p0 + rad * sun_dir;
-  pp = p0 - rad * sun_dir;
+  pp = p0 - 2.0f*rad * sun_dir;
   float xs = pm.x(), ys = pm.y();
   float xe = pp.x(), ye = pp.y();
   bool init = true;
   int ir = int(rad);
   int start = -ir;
   float x, y;
-  std::vector<std::tuple<int, int, int>> deriv_pix_offset;
+  std::vector<std::tuple<int, int, int> > deriv_pix_offset;
+  std::vector<std::pair<int, int> > step_map(9);
 
   while (brip_line_generator::generate(init, xs, ys, xe, ye, x, y))
   {
+    if(start == rad+1)
+      break;
     deriv_pix_offset.push_back(std::tuple<int, int, int>(int(x), int(y), start++));
   }
   int ni = img_tar.ni(), nj = img_tar.nj(), ns = deriv_pix_offset.size();
   int sumd = 0, sumc = 0;
   for (int k = 0; k < ns; ++k)
   {
-    sumd += abs(std::get<2>(deriv_pix_offset[k]));
+    int w = std::get<2>(deriv_pix_offset[k]);
+    // std::cout << k << ' ' << w << std::endl;
+    sumd += abs(w);
+
+    if (k == 0)
+    {
+      int di = std::get<0>(deriv_pix_offset[2]);
+      int dj = std::get<1>(deriv_pix_offset[2]);
+      step_map[k] = std::pair<int, int>(di, dj);
+    }
+    else if (k > 0 && k <= 3)
+    {
+      int di = std::get<0>(deriv_pix_offset[3]);
+      int dj = std::get<1>(deriv_pix_offset[3]);
+      step_map[k] = std::pair<int, int>(di, dj);
+    }
+    else if (k == 4)
+    {
+      int di = std::get<0>(deriv_pix_offset[4]);
+      int dj = std::get<1>(deriv_pix_offset[4]);
+      step_map[k] = std::pair<int, int>(di, dj);
+    }
+    else if (k > 4 && k <= 7)
+    {
+      int di = std::get<0>(deriv_pix_offset[5]);
+      int dj = std::get<1>(deriv_pix_offset[5]);
+      step_map[k] = std::pair<int, int>(di, dj);
+    }
+    else if (k == 8)
+    {
+      int di = std::get<0>(deriv_pix_offset[6]);
+      int dj = std::get<1>(deriv_pix_offset[6]);
+      step_map[k] = std::pair<int, int>(di, dj);
+    }
   }
+  
   vil_image_view<float> sun_dscan(ni, nj);
   vil_image_view<float> sun_peak(ni, nj);
+  vil_image_view<T> mapped_target = img_tar;
   // vil_image_view<float> sun_cscan(ni, nj);
   sun_dscan.fill(0.0f);
   sun_peak.fill(0.0f);
-  //  sun_cscan.fill(0.0f);
-  int itstart = int(rad) + 1, v0 = 1000;
+
+  int itstart = int(rad) + 1;
   for (int j = itstart; j < (nj - itstart); ++j)
     for (int i = itstart; i < (ni - itstart); ++i)
     {
       float dsum = 0.0f, csum = 0.0;
+      int vmin = 4000.0f;
       for (int k = 0; k < ns; ++k)
       {
         int di = std::get<0>(deriv_pix_offset[k]);
         int dj = std::get<1>(deriv_pix_offset[k]);
         int wd = std::get<2>(deriv_pix_offset[k]);
-        int v = img_tar(i + di, j + dj);
+        float v = img_tar(i + di, j + dj);
         dsum += wd * v;
+        if(v<vmin)
+          vmin = v;
       }
       dsum /= sumd;
-      sun_dscan(i, j) = dsum;
+      if(vmin < 200.0f&&dsum>200.0f)
+        sun_dscan(i, j) = dsum;
     }
+  bool save_result = true;
+  int c = int(rad);
+  // compute center
   for (int j = itstart; j < (nj - itstart); ++j)
     for (int i = itstart; i < (ni - itstart); ++i)
     {
-      int maxv = 0, max_k = 0;
+      float v = sun_dscan(i, j);
+      if(v == 0.0f)
+        continue;
+      int max_k = 0;
+      float max_v = 0.0f;
+      for (int k = 0; k < ns; ++k)
+      {
+        int di = step_map[k].first;
+        int dj = step_map[k].second;
+        float v = sun_dscan(i + di, j + dj);
+        if(v>max_v){
+          max_v = v;
+          max_k = k;
+        }
+        if(max_k == c)
+          sun_peak(i, j) = max_v;
+      }
+    }
+  // compress step
+  for (int j = itstart; j < (nj - itstart); ++j)
+    for (int i = itstart; i < (ni - itstart); ++i)
+    {
+      float v = sun_peak(i, j);
+      if(v == 0.0f)
+        continue;
+      int max_k = 0;
+      float max_v = 0.0f;
+      for (int k = 0; k < ns; ++k)
+      {
+        int si = step_map[k].first;
+        int sj = step_map[k].second;
+        T v = img_tar(i + si, j + sj);
+        int di = std::get<0>(deriv_pix_offset[k]);
+        int dj = std::get<1>(deriv_pix_offset[k]);
+        int im = i + di, jm = j + dj;
+        if (im < 0 || im >= ni || jm < 0 || jm >= nj)
+          continue;
+        mapped_target(i+di, j+dj) = v;
+      }
+    }
+      
+  if(save_result){
+    std::string dpath = "D:/tests/BuckleyAFB/test_results/sun_dscan_tar.tif";
+    std::string ddisp_path = "D:/tests/BuckleyAFB/test_results/disp_debug.tif";
+    std::string peak_path = "D:/tests/BuckleyAFB/test_results/peak_resp.tif";
+    std::string mapped_target_path = "D:/tests/BuckleyAFB/test_results/mapped_target.tif";
+    vil_save(sun_dscan, dpath.c_str());
+    vil_save(disp_img, ddisp_path.c_str());
+    vil_save(sun_peak, peak_path.c_str());
+    vil_save(mapped_target, mapped_target_path.c_str());
+  }
+}
+template <class T>
+void bsgm_compress_shadow_step_response(
+  vil_image_view<T>& img_tar,
+  vil_image_view<T>& img_ref,
+  const vgl_vector_2d<float>& sun_dir_tar,
+  const vgl_vector_2d<float> & sun_dir_ref,
+  int filter_high,
+  int shadow_low,
+  float invalid_disparity){
+  // compute scan pixels
+  vgl_point_2d<float> p0(0.0f, 0.0f), pp, pm;
+  float rad = 3.0f;
+  pm = p0 + 3.0f * rad * sun_dir_tar;
+  pp = p0 - 3.0f * rad * sun_dir_tar;
+  float xs = pm.x(), ys = pm.y();
+  float xe = pp.x(), ye = pp.y();
+  bool init = true;
+  int ir = int(rad);
+  int start = -3*ir;
+  float x, y;
+  std::vector<std::tuple<int, int, int> > deriv_pix_offset;
+  std::vector<std::pair<int, int> > step_map(9);
+
+  while (brip_line_generator::generate(init, xs, ys, xe, ye, x, y))
+  {
+    //if(start == rad+1)
+      //break;
+    if (start>=(-rad) && start<=(rad))
+      deriv_pix_offset.push_back(std::tuple<int, int, int>(int(x), int(y), start));
+    start++;
+  }
+  int ni = img_tar.ni(), nj = img_tar.nj(), ns = deriv_pix_offset.size();
+  int sumd = 0, sumc = 0;
+  for (int k = 0; k < ns; ++k)
+  {
+    int w = std::get<2>(deriv_pix_offset[k]);
+    // std::cout << k << ' ' << w << std::endl;
+    sumd += abs(w);
+    int ti = std::get<0>(deriv_pix_offset[k]);
+    int tj = std::get<1>(deriv_pix_offset[k]);
+    T v = img_tar(511 + ti, 1081 + tj);//ref (500, 1081)
+    std::cout << ti << ' ' << tj << ' ' << v <<  std::endl;
+
+    if (k == 0)
+    {
+      int di = std::get<0>(deriv_pix_offset[2]);
+      int dj = std::get<1>(deriv_pix_offset[2]);
+      step_map[k] = std::pair<int, int>(di, dj);
+    }
+    else if (k > 0 && k <= 3)
+    {
+      int di = std::get<0>(deriv_pix_offset[3]);
+      int dj = std::get<1>(deriv_pix_offset[3]);
+      step_map[k] = std::pair<int, int>(di, dj);
+    }
+    else if (k == 4)
+    {
+      int di = std::get<0>(deriv_pix_offset[4]);
+      int dj = std::get<1>(deriv_pix_offset[4]);
+      step_map[k] = std::pair<int, int>(di, dj);
+    }
+    else if (k > 4 && k <= 7)
+    {
+      int di = std::get<0>(deriv_pix_offset[5]);
+      int dj = std::get<1>(deriv_pix_offset[5]);
+      step_map[k] = std::pair<int, int>(di, dj);
+    }
+    else if (k == 8)
+    {
+      int di = std::get<0>(deriv_pix_offset[6]);
+      int dj = std::get<1>(deriv_pix_offset[6]);
+      step_map[k] = std::pair<int, int>(di, dj);
+    }
+  }
+  
+  vil_image_view<float> sun_dscan_tar(ni, nj);
+  vil_image_view<float> sun_peak_tar(ni, nj);
+  vil_image_view<T> mapped_target = img_tar;
+  sun_dscan_tar.fill(0.0f);
+  sun_peak_tar.fill(0.0f);
+
+  int itstart = int(rad) + 1;
+  for (int j = itstart; j < (nj - itstart); ++j)
+    for (int i = itstart; i < (ni - itstart); ++i)
+    {
+      float dsum = 0.0f, csum = 0.0;
+      int vmin = 4000.0f;
       for (int k = 0; k < ns; ++k)
       {
         int di = std::get<0>(deriv_pix_offset[k]);
         int dj = std::get<1>(deriv_pix_offset[k]);
-        int v = sun_dscan(i + di, j + dj);
-        if (k == 0)
-          v0 = img_tar(i + di, j + dj);
-        if (v >= maxv)
-        {
-          maxv = v;
-          max_k = k;
-        }
+        int wd = std::get<2>(deriv_pix_offset[k]);
+        float v = img_tar(i + di, j + dj);
+        dsum += wd * v;
+        if(v<vmin)
+          vmin = v;
       }
-      int c = rad;
-      if (max_k == c || max_k == c - 1 || max_k == c + 1)
-        sun_peak(i, j) = maxv;
+      dsum /= sumd;
+      if(vmin < 200.0f&&dsum>200.0f)
+        sun_dscan_tar(i, j) = dsum;
     }
+  bool save_result = true;
+  int c = int(rad);
+  // compute center
   for (int j = itstart; j < (nj - itstart); ++j)
     for (int i = itstart; i < (ni - itstart); ++i)
     {
-      int d0i = std::get<0>(deriv_pix_offset[0]);
-      int d0j = std::get<1>(deriv_pix_offset[0]);
-      int v0 = img_tar(i + d0i, j + d0j);
-      int ci = std::get<0>(deriv_pix_offset[int(rad)]);
-      int cj = std::get<1>(deriv_pix_offset[int(rad)]);
-      int mv = sun_peak(i + ci, j + cj);
-      if (v0 < 75 && mv > 100)
-        for (int k = 0; k <= int(rad); ++k)
-        {
-          int di = std::get<0>(deriv_pix_offset[k]);
-          int dj = std::get<1>(deriv_pix_offset[k]);
-          if (i + di == 700 && j + dj == 550)
-          {
-            std::cout << "v0,  mv " << v0 << ' ' << mv << std::endl;
-            std::cout << " k i+d0i j+d0j i+ci j+cj " << k << ' ' << i + d0i << ' ' << j + d0j << ' ' << i + ci << ' ' << j + cj << std::endl;
-          }
-          disp_img(i + di, j + dj) = invalid_disparity;
-        }
-    }
-   
-  std::string dpath = "D:/tests/BuckleyAFB/test_results/sun_dscan_ref.tif";
-  std::string peak_path = "D:/tests/BuckleyAFB/test_results/sun_peak.tif";
-  vil_save(sun_dscan, dpath.c_str());
-  vil_save(sun_peak, peak_path.c_str());
-#if 0
-  //compute intensity gradient
-  vil_gauss_filter_5tap_params gauss_params(0.75);
-  vil_image_view<T> gauss_img_tar;
-  vil_gauss_filter_5tap(img_tar, gauss_img_tar, gauss_params);
-  vil_image_view<float> grad_x_tar, grad_y_tar;
-  vil_sobel_3x3<T,float>(gauss_img_tar, grad_x_tar, grad_y_tar);
-  int w = disp_img.ni(), h = disp_img.nj();  
-  size_t nig = grad_x_tar.ni(), njg = grad_x_tar.nj();
-  for(size_t j = 2; j<(njg-2); ++j)
-    for(size_t i = 2; i<(nig-2);++i){
-      if(i>w || j > h) continue;
-      vgl_vector_2d<float> gvect(grad_x_tar(i,j), grad_y_tar(i,j));
-      float dp = dot_product(sun_dir, gvect);
-      if(img_tar(i,j) > shadow_high) dp = 0.0f;
-      if(dp<0.0f) disp_img(i,j) = invalid_disparity;
-    }
-
-  if((w>570 && h > 1137) && (disp_img(570,1137) == -11) && (disp_img(400,650)==-14)){
-    size_t nig = grad_x_tar.ni(), njg = grad_x_tar.nj();
-    vil_image_view<float> dotp(nig, njg);
-    dotp.fill(0.0f);
-    for(size_t j = 2; j<(njg-2); ++j)
-      for(size_t i = 2; i<(nig-2);++i){
-        vgl_vector_2d<float> gvect(grad_x_tar(i,j), grad_y_tar(i,j));
-        float dp = dot_product(sun_dir, gvect);
-        if(img_tar(i,j) > shadow_high) dp = 0.0f;
-        dotp(i,j) = dp;
-      }
-    std::string path = "d:/tests/BuckleyAFB/grad_shadow_dir_dp.tif";
-    vil_save(dotp, path.c_str());
-  }
-
-  return;
-  // check shadow gradient
-  int nir = img_ref.ni();
-  for (int y = 2; y < (h-2); y++) {
-    for (int x = 2; x < (w-2); x++) {
-      if (std::isnan(invalid_disparity) && std::isnan(disp_img(x, y))) {
+      float v = sun_dscan_tar(i, j);
+      if(v == 0.0f)
         continue;
-      } else if (disp_img(x, y) == invalid_disparity) {
-        continue;
-      } else {
-        int disp = static_cast<int>(disp_img(x, y));
-        int xd = x + disp;
-        if(xd>=nir)
-          continue;
-        bool print = (x == 570 && y == 1137&& disp == -11) ||(x == 400 && y == 650 && disp == -14);
-        int tar_pix = static_cast<int>(img_tar(x, y));
-        int ref_pix = static_cast<int>(img_ref(xd, y));
-        if(tar_pix < shadow_low || ref_pix< shadow_low){
-          disp_img(x, y) = invalid_disparity;
-          continue;
+      int max_k = 0;
+      float max_v = 0.0f;
+      for (int k = 0; k < ns; ++k)
+      {
+        int di = step_map[k].first;
+        int dj = step_map[k].second;
+        float v = sun_dscan_tar(i + di, j + dj);
+        if(v>max_v){
+          max_v = v;
+          max_k = k;
         }
-        if(tar_pix > shadow_high && ref_pix > shadow_high)
-          continue;
-        // check shadow gradient
-        vgl_vector_2d<float> grad_dir(grad_x_tar(x,y), grad_y_tar(x,y));
-        double gmag = grad_dir.length();
-        if (gmag < 0.5)
-          continue;
-        grad_dir /=gmag; //normalize
-        float dp = fabs(dot_product(grad_dir, sun_dir));
-        if(print) std::cout << "disp  grad_dir sun_dir gmag dp " << disp << ' ' << grad_dir << ' ' << sun_dir << ' ' << gmag << ' ' << dp << std::endl;
-        if(dp > 0.5)
-          disp_img(x, y) = invalid_disparity;
+        if(max_k == c)
+          sun_peak_tar(i, j) = max_v;
       }
     }
+  // compress step
+  for (int j = itstart; j < (nj - itstart); ++j)
+    for (int i = itstart; i < (ni - itstart); ++i)
+    {
+      float v = sun_peak_tar(i, j);
+      if(v == 0.0f)
+        continue;
+      bool print = (i == 507 && j == 1084 && fabs(v-572.3)<0.1);
+      if(print) 
+          std::cout << "STEP MAP (k, tar, map_tar, si, sj, di, dj)" << std::endl;
+      int max_k = 0;
+      float max_v = 0.0f;
+      for (int k = 0; k < ns; ++k)
+      {
+        int si = step_map[k].first;
+        int sj = step_map[k].second;
+        T mv = img_tar(i + si, j + sj);
+        int di = std::get<0>(deriv_pix_offset[k]);
+        int dj = std::get<1>(deriv_pix_offset[k]);
+        int im = i + di, jm = j + dj;
+        if (im < 0 || im >= ni || jm < 0 || jm >= nj)
+          continue;
+        T in_v = img_tar(im, jm);
+        mapped_target(im, jm) = mv;
+        if(print) std::cout << k << ' ' << in_v << ' ' << mv << ' ' << si << ' ' << sj << ' ' << di << ' ' << dj << std::endl;
+      }
+    }
+  img_tar = mapped_target;
+  if(save_result){
+    std::string dpath = "D:/tests/BuckleyAFB/test_results/sun_dscan_tar.tif";
+    std::string ddisp_path = "D:/tests/BuckleyAFB/test_results/disp_debug.tif";
+    std::string peak_path = "D:/tests/BuckleyAFB/test_results/peak_resp.tif";
+    //  std::string mapped_target_path = "D:/tests/BuckleyAFB/test_results/mapped_target.tif";
+    vil_save(sun_dscan_tar, dpath.c_str());
+    //vil_save(disp_img, ddisp_path.c_str());
+    vil_save(sun_peak_tar, peak_path.c_str());
   }
-#endif
 }
 template <class T>
 void bsgm_check_nonunique(
@@ -602,7 +745,10 @@ template void bsgm_check_nonunique(vil_image_view<float>& , const vil_image_view
                                    const vil_image_view<T>&, float, unsigned short, int,          \
                                    const vgl_box_2d<int>&);                                       \
 template void bsgm_remove_shadow_overhang(vil_image_view<float>&, const vil_image_view<T>&,       \
-                                          const vil_image_view<T>&, const vgl_vector_2d<float>&, \
-                                          int, int, float, float)
-
+                                          const vil_image_view<T>&, const vgl_vector_2d<float>&,  \
+                                          int, int, float, float);                                \
+template void bsgm_compress_shadow_step_response(vil_image_view<T>&, vil_image_view<T>&,          \
+                                                 const vgl_vector_2d<float>&,                     \
+                                                  const vgl_vector_2d<float>&,                    \
+                                                 int filter_high, int shadow_low, float invalid_disparity)
 #endif // bsgm_error_checking_h_
