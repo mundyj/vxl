@@ -41,6 +41,16 @@ void bsgm_remove_shadow_overhang(
   float shadow_gradient_thresh,
   float invalid_disparity);
 
+template <class T>
+void bsgm_compress_shadow_step_response(
+  const vil_image_view<T>& img_tar,
+  const vil_image_view<T>& img_ref,
+  const vgl_vector_2d<float>& sun_dir_tar,
+  const vgl_vector_2d<float>& sun_dir_ref,
+  int filter_high,
+  int shadow_low,
+  float invalid_disparity);
+
 //: Use the OpenCV SGM uniqueness criteria to find bad disparities. This
 // is not quite the same as the left-right consistency check from the SGM
 // paper.  Despite working well enough, this approach is problematic in part
