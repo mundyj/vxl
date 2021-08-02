@@ -31,15 +31,13 @@ void bsgm_check_shadows(
 
 // develop ideas
 template <class T>
-void bsgm_remove_shadow_overhang(
-  vil_image_view<float>& disp_img,
-  const vil_image_view<T>& img_tar,
-  const vil_image_view<T>& img_ref,
+void bsgm_shadow_step_filter(
+  const vil_image_view<T>& img,
+  const vil_image_view<T>& center_resp,
   const vgl_vector_2d<float>& sun_dir,
-  int shadow_high,
-  int shadow_low,
-  float shadow_gradient_thresh,
-  float invalid_disparity);
+  int response_low,
+  int shadow_high);
+
 
 template <class T>
 void bsgm_compress_shadow_step_response(
