@@ -29,25 +29,19 @@ void bsgm_check_shadows(
   unsigned short shadow_thresh,
   const vgl_box_2d<int>& img_window = vgl_box_2d<int>());
 
-// develop ideas
+// mask the image step response in shadows
+// since it produces similar appearance in target and reference
+// images, thus creating a false surface at the shadow edge
+// of roofs.
 template <class T>
 void bsgm_shadow_step_filter(
   const vil_image_view<T>& img,
-  const vil_image_view<T>& center_resp,
+  vil_image_view<bool>& step_img, // result
   const vgl_vector_2d<float>& sun_dir,
+  int radius,
   int response_low,
   int shadow_high);
 
-
-template <class T>
-void bsgm_compress_shadow_step_response(
-  const vil_image_view<T>& img_tar,
-  const vil_image_view<T>& img_ref,
-  const vgl_vector_2d<float>& sun_dir_tar,
-  const vgl_vector_2d<float>& sun_dir_ref,
-  int filter_high,
-  int shadow_low,
-  float invalid_disparity);
 
 //: Use the OpenCV SGM uniqueness criteria to find bad disparities. This
 // is not quite the same as the left-right consistency check from the SGM
