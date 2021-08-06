@@ -10,7 +10,7 @@ set(bsgm_sources
     bsgm_error_checking.h                  bsgm_error_checking.cxx  bsgm_error_checking.hxx
     bsgm_pair_selector.h                   bsgm_pair_selector.cxx
     bsgm_remove_spikes.h                   bsgm_remove_spikes.cxx
-    bsgm_category_image.h                  bsgm_category_image.cxx
+    bsgm_surface_type.h                    bsgm_surface_type.cxx
 )
 
 aux_source_directory(Templates bsgm_sources)

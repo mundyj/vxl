@@ -1,4 +1,4 @@
-#include "bsgm_category_image.h"
+#include "bsgm_surface_type.h"
 #include <vil/vil_load.h>
 #include <vil/vil_save.h>
 #include <vul/vul_file.h>
@@ -6,7 +6,7 @@
 #include <fstream>
 #include <stdexcept>
 
-bool bsgm_category_image::load_categories(std::string const& directory) {
+bool bsgm_surface_type::load_surface_types(std::string const& directory) {
   if (!vul_file::is_directory(directory)) {
     std::string message = "category directory not accessable" + directory;
     std::cout << message << std::endl;
@@ -17,14 +17,14 @@ bool bsgm_category_image::load_categories(std::string const& directory) {
     std::string path = fn();
     vil_image_view<float> cat_img = vil_load(path.c_str());
     if (cat_img.ni() == 0) {
-      std::string message = "can't load category image from " + path;
+      std::string message = "can't load type image from " + path;
       std::cout << message << std::endl;
       return false;
     }
     path = vul_file::strip_directory(path);
-    std::string cat_str = vul_file::strip_extension(path);
-    category c = this->cat_from_string(cat_str);
-    categories_[c] = cat_img;
+    std::string type_str = vul_file::strip_extension(path);
+    stype t = this->type_from_string(type_str);
+    type_images_[t] = cat_img;
   }
   std::ifstream istr(directory + "/" + "source.txt");
   if (!istr) {
@@ -34,20 +34,22 @@ bool bsgm_category_image::load_categories(std::string const& directory) {
     istr >> source_str;
     source_ = this->source_from_string(source_str);
   }
+  ni_ = type_images_[NO_DATA].ni();
+  nj_ = type_images_[NO_DATA].nj();
   return true;
 }
 
-bool bsgm_category_image::save_categories(std::string const& directory) {
+bool bsgm_surface_type::save_surface_types(std::string const& directory) {
   if (!vul_file::is_directory(directory)) {
     std::string message = "category directory not accessable" + directory;
     std::cout << message << std::endl;
     return false;
   }
-  for (std::map<category, vil_image_view<float> >::iterator cit = categories_.begin();
-    cit != categories_.end(); ++cit) {
-    std::string path = directory + "/" + cat_to_string(cit->first) + ".tif";
+  for (std::map<stype, vil_image_view<float> >::iterator cit = type_images_.begin();
+    cit != type_images_.end(); ++cit) {
+    std::string path = directory + "/" + type_to_string(cit->first) + ".tif";
     if (!vil_save(cit->second, path.c_str())) {
-      std::cout << "Can't save category image to " << path << std::endl;
+      std::cout << "Can't save type image to " << path << std::endl;
       return false;
     }
   }
