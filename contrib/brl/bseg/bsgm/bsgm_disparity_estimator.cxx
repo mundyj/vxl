@@ -17,7 +17,8 @@ bsgm_disparity_estimator::bsgm_disparity_estimator(
   const bsgm_disparity_estimator_params& params,
   long long int cost_volume_width,
   long long int cost_volume_height,
-  long long int num_disparities) :
+  long long int num_disparities,
+  vgl_vector_2d<float> const& sun_dir_tar):
     params_( params ),
     w_( cost_volume_width ),
     h_( cost_volume_height ),
@@ -25,7 +26,8 @@ bsgm_disparity_estimator::bsgm_disparity_estimator(
     cost_unit_( 64 ),
     p1_base_( 1.0f ),
     p2_min_base_( 1.0f ),
-    p2_max_base_( 8.0f )
+    p2_max_base_( 8.0f ),
+    sun_dir_tar_(sun_dir_tar)
 {
   // Validate inputs
   if (cost_volume_width < 0 || cost_volume_height < 0 || num_disparities < 0) {
@@ -227,8 +229,12 @@ bsgm_disparity_estimator::run_multi_dp(
   float grad_norm = 1.0f/params_.max_grad;
 
   auto bias_weight = params_.bias_weight;
-  auto bias_dir = normalize(params_.bias_dir);
-  bool using_bias = bias_weight > 0.0f;
+  float mag = sun_dir_tar_.length();
+  if(mag > 0.0f) 
+    sun_dir_tar_/=mag;
+
+  auto bias_dir = sun_dir_tar_;
+  bool using_bias = (bias_weight > 0.0f) && (mag > 0.0f);
 
   // Compute directional derivatives used for gradient-weighted smoothing
   std::vector< vil_image_view<float> > deriv_img(4);
@@ -665,7 +671,6 @@ std::ostream& operator<<(std::ostream& os, const bsgm_disparity_estimator_params
      << "error_check_mode:                " << params.error_check_mode << std::endl
      << "shadow_thresh:                   " << static_cast<unsigned>(params.shadow_thresh) << std::endl
      << "bias_weight:                     " << params.bias_weight << std::endl
-     << "bias_dir:                        " << params.bias_dir << std::endl
      << "census_weight:                   " << params.census_weight << std::endl
      << "xgrad_weight:                    " << params.xgrad_weight << std::endl
      << "census_tol:                      " << params.census_tol << std::endl

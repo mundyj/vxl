@@ -36,7 +36,7 @@ void bsgm_check_shadows(
 template <class T>
 void bsgm_shadow_step_filter(
   const vil_image_view<T>& img,
-  vil_image_view<bool>& step_img, // result
+  vil_image_view<float>& step_prob_img, // result
   const vgl_vector_2d<float>& sun_dir,
   int radius,
   int response_low,

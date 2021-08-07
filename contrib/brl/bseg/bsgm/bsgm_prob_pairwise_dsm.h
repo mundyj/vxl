@@ -55,7 +55,7 @@
 #include <bpgl/algo/bpgl_gridding.h>
 #include <bsta/bsta_histogram.h>
 #include "bsgm_disparity_estimator.h" // for disparity_estimator_params
-
+#include "bsgm_surface_type.h"
 
 struct pairwise_params
 {
@@ -136,6 +136,13 @@ struct pairwise_params
   int effective_bits_per_pixel_ = 8;
 
   int window_padding_ = 100;
+
+  int shadow_profile_radius_ = 4;
+
+  int response_low_ = 100;
+
+  int shadow_high_ = 150;
+
 };
 
 
@@ -148,51 +155,55 @@ class bsgm_prob_pairwise_dsm
     init_dynamic_range_table();
     H0_.fill(NAN);
     H1_.fill(NAN);
-    sun_dir_0_.set(0.0f, 0.0f, 0.0f);
-    sun_dir_1_.set(0.0f, 0.0f, 0.0f);
+    sun_dir_3d_0_.set(0.0f, 0.0f, 0.0f);
+    sun_dir_3d_1_.set(0.0f, 0.0f, 0.0f);
+    set_shadow_context_data();
   }
 
   //: the sun direction vectors are in East North Up Cartesian coordinates
   bsgm_prob_pairwise_dsm(vil_image_view_base_sptr const& view0, CAM_T const& cam0,
                          vil_image_view_base_sptr const& view1, CAM_T const& cam1,
-                         vgl_vector_3d<float> const& sun_dir_0 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f),
-                         vgl_vector_3d<float> const& sun_dir_1 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f))
+                         vgl_vector_3d<float> const& sun_dir_3d_0 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f),
+                         vgl_vector_3d<float> const& sun_dir_3d_1 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f))
   {
     set_images_and_cams(view0, cam0, view1, cam1);
     init_dynamic_range_table();
     H0_.fill(NAN);
     H1_.fill(NAN);
-    sun_dir_0_ = sun_dir_0;
-    sun_dir_1_ = sun_dir_1;
+    sun_dir_3d_0_ = sun_dir_3d_0;
+    sun_dir_3d_1_ = sun_dir_3d_1;
+    set_shadow_context_data();
   }
 
 //: the sun direction vectors are in East North Up Cartesian coordinates
   bsgm_prob_pairwise_dsm(vil_image_resource_sptr const& resc0, CAM_T const& cam0,
                          vil_image_resource_sptr const& resc1, CAM_T const& cam1,
-                         vgl_vector_3d<float> const& sun_dir_0 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f),
-                         vgl_vector_3d<float> const& sun_dir_1 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f)
+                         vgl_vector_3d<float> const& sun_dir_3d_0 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f),
+                         vgl_vector_3d<float> const& sun_dir_3d_1 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f)
                          )
   {
     set_images_and_cams(resc0, cam0, resc1, cam1);
     init_dynamic_range_table();
     H0_.fill(NAN);
     H1_.fill(NAN);
-    sun_dir_0_ = sun_dir_0;
-    sun_dir_1_ = sun_dir_1;
+    sun_dir_3d_0_ = sun_dir_3d_0;
+    sun_dir_3d_1_ = sun_dir_3d_1;
+    set_shadow_context_data();
   }
 
 //: the sun direction vectors are in East North Up Cartesian coordinates
   bsgm_prob_pairwise_dsm(vil_image_view<PIX_T> const& view0, CAM_T const& cam0,
                          vil_image_view<PIX_T> const& view1, CAM_T const& cam1,
-                         vgl_vector_3d<float> const& sun_dir_0 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f),
-                         vgl_vector_3d<float> const& sun_dir_1 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f))
+                         vgl_vector_3d<float> const& sun_dir_3d_0 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f),
+                         vgl_vector_3d<float> const& sun_dir_3d_1 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f))
   {
     set_images_and_cams(view0, cam0, view1, cam1);
     init_dynamic_range_table();
     H0_.fill(NAN);
     H1_.fill(NAN);
-    sun_dir_0_ = sun_dir_0;
-    sun_dir_1_ = sun_dir_1;
+    sun_dir_3d_0_ = sun_dir_3d_0;
+    sun_dir_3d_1_ = sun_dir_3d_1;
+    set_shadow_context_data();
   }
 
   // ACCESSORS-----
@@ -201,37 +212,40 @@ class bsgm_prob_pairwise_dsm
   // the sun direction vectors are in East North Up Cartesian coordinates
   void set_images_and_cams(vil_image_view_base_sptr const& view0, CAM_T const& cam0,
                            vil_image_view_base_sptr const& view1, CAM_T const& cam1,
-                           vgl_vector_3d<float> const& sun_dir_0 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f),
-                           vgl_vector_3d<float> const& sun_dir_1 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f))
+                           vgl_vector_3d<float> const& sun_dir_3d_0 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f),
+                           vgl_vector_3d<float> const& sun_dir_3d_1 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f))
   {
     rip_.set_images(view0, view1);
     this->set_cameras(cam0, cam1);
-    sun_dir_0_ = sun_dir_0;
-    sun_dir_1_ = sun_dir_1;
+    sun_dir_3d_0_ = sun_dir_3d_0;
+    sun_dir_3d_1_ = sun_dir_3d_1;
+    set_shadow_context_data();
   }
 
   void set_images_and_cams(vil_image_view<PIX_T> const& view0, CAM_T const& cam0,
                            vil_image_view<PIX_T> const& view1, CAM_T const& cam1,
-                           vgl_vector_3d<float> const& sun_dir_0 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f),
-                           vgl_vector_3d<float> const& sun_dir_1 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f))
+                           vgl_vector_3d<float> const& sun_dir_3d_0 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f),
+                           vgl_vector_3d<float> const& sun_dir_3d_1 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f))
   {
     vil_image_resource_sptr resc0_ptr = vil_new_image_resource_of_view(view0);
     vil_image_resource_sptr resc1_ptr = vil_new_image_resource_of_view(view1);
     rip_.set_images(resc0_ptr, resc1_ptr);
     this->set_cameras(cam0, cam1);
-    sun_dir_0_ = sun_dir_0;
-    sun_dir_1_ = sun_dir_1;
+    sun_dir_3d_0_ = sun_dir_3d_0;
+    sun_dir_3d_1_ = sun_dir_3d_1;
+    set_shadow_context_data();
   }
 
   void set_images_and_cams(vil_image_resource_sptr const& resc0, CAM_T const& cam0,
                            vil_image_resource_sptr const& resc1, CAM_T const& cam1,
-                           vgl_vector_3d<float> const& sun_dir_0 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f),
-                           vgl_vector_3d<float> const& sun_dir_1 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f))
+                           vgl_vector_3d<float> const& sun_dir_3d_0 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f),
+                           vgl_vector_3d<float> const& sun_dir_3d_1 = vgl_vector_3d<float>(0.0f, 0.0f, 0.0f))
   {
     rip_.set_images(resc0, resc1);
     this->set_cameras(cam0, cam1);
-    sun_dir_0_ = sun_dir_0;
-    sun_dir_1_ = sun_dir_1;
+    sun_dir_3d_0_ = sun_dir_3d_0;
+    sun_dir_3d_1_ = sun_dir_3d_1;
+    set_shadow_context_data();
   }
 
   void set_cameras(CAM_T const& cam0, CAM_T const& cam1)
@@ -332,6 +346,10 @@ class bsgm_prob_pairwise_dsm
   const vil_image_view<float>& prob_confidence() const { return prob_heightmap_prob_; }
   const vil_image_view<float>& radial_std_dev_image() const {return radial_std_dev_image_; }
 
+  const bsgm_surface_type & rect_0_stype() const  { return rect_space_0_type_; }
+  const bsgm_surface_type & rect_1_stype() const  { return rect_space_1_type_; }
+  const bsgm_surface_type & dsm_grid_stype() const { return dsm_grid_space_type_; }
+  
   // PROCESS-----
 
   //: image rectification
@@ -516,10 +534,17 @@ class bsgm_prob_pairwise_dsm
     bits_per_pix_factors_[8] = 1.0f;
     bits_per_pix_factors_[11] = 2.8f;
   }
-  vgl_vector_3d<float> sun_dir_0_;
-  vgl_vector_3d<float> sun_dir_1_;
-  vgl_vector_2d<float> dp_bias_dir_0_;
-  vgl_vector_2d<float> dp_bias_dir_1_;
+
+  bool shadow_context_enabled_;
+  vgl_vector_3d<float> sun_dir_3d_0_;
+  vgl_vector_3d<float> sun_dir_3d_1_;
+  vgl_vector_2d<float> sun_dir_0_;
+  vgl_vector_2d<float> sun_dir_1_;
+
+  // define surface type probability layers
+  bsgm_surface_type rect_space_0_type_;
+  bsgm_surface_type rect_space_1_type_;
+  bsgm_surface_type dsm_grid_space_type_;
 
   bool affine_;  // vs. perspective
   pairwise_params params_;
