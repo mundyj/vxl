@@ -63,3 +63,43 @@ bool bsgm_surface_type::save_surface_types(std::string const& directory) {
   ostr.close();
   return true;
 }
+
+bool bsgm_surface_type::apply(vil_image_view<bool> const& mask, stype type){
+  if(type_images_.count(type) == 0){
+    std::cout << "specified type " << type << " does not exist" << std::endl;
+    return false;
+  }
+  vil_image_view<float>& type_img = type_images_[type];
+  if(type_img.ni()!=ni_ || type_img.nj() != nj_){
+    std::cout << "mismatch in type image dimensions" << std::endl;
+    return false;
+  }
+  for(size_t j = 0; j<nj_; ++j)
+    for(size_t i = 0; i<ni_; ++i){
+      bool m = mask(i,j);
+      if(m) type_img(i,j) = 1.0f;
+      else type_img(i,j) = 0.0f;
+    }
+  return true;
+}
+bool bsgm_surface_type::apply(vil_image_view<float> const& prob, stype type)
+{
+  if (type_images_.count(type) == 0)
+  {
+    std::cout << "specified type " << type << " does not exist" << std::endl;
+    return false;
+  }
+  vil_image_view<float> & type_img = type_images_[type];
+  if (type_img.ni() != ni_ || type_img.nj() != nj_)
+  {
+    std::cout << "mismatch in type image dimensions" << std::endl;
+    return false;
+  }
+  for (size_t j = 0; j < nj_; ++j)
+    for (size_t i = 0; i < ni_; ++i)
+    {
+      float pr = prob(i, j);
+      type_img(i, j) = pr;
+    }
+  return true;
+}

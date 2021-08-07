@@ -213,17 +213,6 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::compute_disparity(
   bool good = true;
   float dynamic_range_factor = bits_per_pix_factors_[params_.effective_bits_per_pixel_];
 
-  bool null_bias_dirs = dp_bias_dir_0_ == vgl_vector_2d<float>(0.0f, 0.0f);
-  null_bias_dirs = null_bias_dirs || dp_bias_dir_1_ == vgl_vector_2d<float>(0.0f, 0.0f);
-
-  bool shadow_context_enabled = !null_bias_dirs;
-  if(shadow_context_enabled){
-    if(forward)
-      params_.de_params_.bias_dir = dp_bias_dir_0_;
-    else
-      params_.de_params_.bias_dir = dp_bias_dir_1_;
-  }
-
   bsgm_compute_invalid_map<PIX_T>(img, img_reference, invalid, min_disparity_,
                                   num_disparities(), border_val, img_window);
   if (params_.coarse_dsm_disparity_estimate_) {
@@ -255,8 +244,18 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::compute_disparity(
     else  // reverse img = img1, ref = img0
       min_disparity.fill(-(num_disparities() + min_disparity_));
 
+    //assign sun direction according to forward or reverse 
+    vgl_vector_2d<float> sun_dir_tar, sun_dir_ref;
+    if (forward)
+      sun_dir_tar = sun_dir_0_;
+    else
+      sun_dir_tar = sun_dir_1_;
+
+    
     bsgm_disparity_estimator bsgm(params_.de_params_, cost_volume_width,
-                                  cost_volume_height, num_disparities());
+                                  cost_volume_height, num_disparities(),
+                                  sun_dir_tar);//potential use for dp sun dir bias
+    
     good = bsgm.compute(img, img_reference, invalid, min_disparity,
                         invalid_disp, disparity, dynamic_range_factor,
                         false, img_window, img_reference_window);
@@ -273,6 +272,33 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::compute_disparity_fwd()
   compute_disparity(rect_bview0_, rect_bview1_, forward,
                     invalid_map_fwd_, disparity_fwd_,
                     rect_target_window_, rect_reference_window_);
+
+  //apply invalid map to surface_types
+  rect_space_0_type_ = bsgm_surface_type(bsgm_surface_type::RECTIFIED_TARGET, rect_bview0_.ni(), rect_bview1_.nj());
+  rect_space_0_type_.apply(invalid_map_fwd_, bsgm_surface_type::INVALID_DATA);
+
+  // apply shadow profile mask to surface_types
+  vil_image_view<float> roof_overhang_mask;
+   std::cout << "SUN DIR 0 " << sun_dir_0_ << std::endl;
+  bsgm_shadow_step_filter<PIX_T>(rect_bview0_, roof_overhang_mask, sun_dir_0_, params_.shadow_profile_radius_, params_.response_low_,params_.shadow_high_);
+  std::string step_debug_path = "D:/tests/BuckleyAFB/results_7_15_2021/target_rect_space_stype/debug_step_mask.tif";
+  vil_save(roof_overhang_mask, step_debug_path.c_str());
+  std::string color_step_debug_path = "D:/tests/BuckleyAFB/results_7_15_2021/target_rect_space_stype/color_roof_overhang.tif";
+  vil_image_view<float> color_overhang(rect_bview0_.ni(), rect_bview0_.nj(), 3);
+  for (size_t j = 0; j < rect_bview0_.nj(); ++j)
+      for (size_t i = 0; i < rect_bview0_.ni(); ++i)
+      {
+        float p = roof_overhang_mask(i, j);
+        float v = rect_bview0_(i, j);
+        float r = v /(1 - p);
+        float g = v;
+        float b = v;
+        color_overhang(i, j, 0) = r;
+        color_overhang(i, j, 1) = g;
+        color_overhang(i, j, 1) = b;
+    }
+  vil_save(color_overhang, color_step_debug_path.c_str());
+  rect_space_0_type_.apply(roof_overhang_mask, bsgm_surface_type::ROOF_OVERHANG);
 }
 
 // compute reverse disparity
@@ -636,12 +662,12 @@ bool bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::save_prob_ptset_color(std::string con
 }
 template <class CAM_T, class PIX_T>
 void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::set_shadow_context_data(){
-  bool null_sun_dir_vectors = (sun_dir_0_ == vgl_vector_3d<float>(0.0f, 0.0f, 0.0f));
-  null_sun_dir_vectors = null_sun_dir_vectors || (sun_dir_1_ == vgl_vector_3d<float>(0.0f, 0.0f, 0.0f));
-  bool shadow_context_enabled = !null_sun_dir_vectors;
-  dp_bias_dir_0_.set(0.0f, 0.0f);
-  dp_bias_dir_1_.set(0.0f, 0.0f);
-  if(!shadow_context_enabled)
+  bool null_sun_dir_vectors = (sun_dir_3d_0_ == vgl_vector_3d<float>(0.0f, 0.0f, 0.0f));
+  null_sun_dir_vectors = null_sun_dir_vectors || (sun_dir_3d_1_ == vgl_vector_3d<float>(0.0f, 0.0f, 0.0f));
+  shadow_context_enabled_ = !null_sun_dir_vectors;
+  sun_dir_0_.set(0.0f, 0.0f);
+  sun_dir_1_.set(0.0f, 0.0f);
+  if(!shadow_context_enabled_)
     return;
   // project 3-d sun direction vector into rectified image space
   // assumes rectification has been executed
@@ -651,17 +677,17 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::set_shadow_context_data(){
   vnl_matrix_fixed<double, 3, 4> m1 = rect_cam1_.get_matrix();
   bool affine = (m0[2][0] == 0.0) && (m0[2][1] == 0.0) && (m0[2][2] == 0.0);
   // note that a vector in 3-d has 4-d homogenous coordinates with scale factor 0
-  vnl_vector_fixed<double, 4> sun_vector_3d_0(sun_dir_0_.x(), sun_dir_0_.y(), sun_dir_0_.z(), 0.0);
-  vnl_vector_fixed<double, 4> sun_vector_3d_1(sun_dir_1_.x(), sun_dir_1_.y(), sun_dir_1_.z(), 0.0);
+  vnl_vector_fixed<double, 4> sun_vector_3d_0(sun_dir_3d_0_.x(), sun_dir_3d_0_.y(), sun_dir_3d_0_.z(), 0.0);
+  vnl_vector_fixed<double, 4> sun_vector_3d_1(sun_dir_3d_1_.x(), sun_dir_3d_1_.y(), sun_dir_3d_1_.z(), 0.0);
   // the sun direction vector in rectified image space
   vnl_vector_fixed<double, 3> sun_vector_2d_0 = m0*sun_vector_3d_0;
   vnl_vector_fixed<double, 3> sun_vector_2d_1 = m1*sun_vector_3d_1;
   if(affine){
-    dp_bias_dir_0_.set(sun_vector_2d_0[0], sun_vector_2d_0[1]);
-    dp_bias_dir_1_.set(sun_vector_2d_0[0], sun_vector_2d_0[1]);
+    sun_dir_0_.set(sun_vector_2d_0[0], sun_vector_2d_0[1]);
+    sun_dir_1_.set(sun_vector_2d_0[0], sun_vector_2d_0[1]);
     // convert to unit vectors
-    dp_bias_dir_0_ /= dp_bias_dir_0_.length();
-    dp_bias_dir_1_ /= dp_bias_dir_1_.length();
+    sun_dir_0_ /= sun_dir_0_.length();
+    sun_dir_1_ /= sun_dir_1_.length();
     return;
   }
   // a perspective camera can project a vector into a finite image point, i.e. shadow vanishing point
@@ -680,8 +706,8 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::set_shadow_context_data(){
 }
 template <class CAM_T, class PIX_T>
 void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::display_sun_dir_rect_bviews(){
-  bool null_sun_dir_vectors = (sun_dir_0_ == vgl_vector_3d<float>(0.0f, 0.0f, 0.0f));
-  null_sun_dir_vectors = null_sun_dir_vectors || (sun_dir_1_ == vgl_vector_3d<float>(0.0f, 0.0f, 0.0f));
+  bool null_sun_dir_vectors = (sun_dir_3d_0_ == vgl_vector_3d<float>(0.0f, 0.0f, 0.0f));
+  null_sun_dir_vectors = null_sun_dir_vectors || (sun_dir_3d_1_ == vgl_vector_3d<float>(0.0f, 0.0f, 0.0f));
   bool shadow_context_enabled = !null_sun_dir_vectors;
   if(!shadow_context_enabled)
     return;// no shadow information
@@ -691,7 +717,7 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::display_sun_dir_rect_bviews(){
   // center of image
   float xs = ni/2.0f, ys = nj/2.0f;
   // assume the image is at least 200x200 pixels
-  float dx = 100.0f*dp_bias_dir_0_.x(), dy = 100.0f*dp_bias_dir_0_.y();
+  float dx = 100.0f*sun_dir_0_.x(), dy = 100.0f*sun_dir_0_.y();
   float xe = xs+dx, ye = ys+dy;
   float x, y;
   bool init = true;
@@ -702,7 +728,7 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::display_sun_dir_rect_bviews(){
      if(yi<0) yi = 0; if(yi>=nj) yi = nj-1;
      rect_bview0_(xi, yi) = pmax;
    }
-  dx = 100.0f*dp_bias_dir_1_.x(); dy = 100.0f*dp_bias_dir_1_.y();
+  dx = 100.0f*sun_dir_1_.x(); dy = 100.0f*sun_dir_1_.y();
   xe = xs+dx; ye = ys+dy;
   init = true;
   while (brip_line_generator::generate(init, xs, ys, xe, ye, x, y))

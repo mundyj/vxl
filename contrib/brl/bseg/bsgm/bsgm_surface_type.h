@@ -43,8 +43,15 @@ class bsgm_surface_type
    type_images_[type] = type_image;
    return true;
  }
- //: type probability
+ //: get type probability (set as well)
  float& p(size_t i, size_t j, stype type){ return type_images_[type](i, j);}
+
+ //: apply a bool image to set probabilites to 1.0f == true, 0.0f == false
+ bool apply(vil_image_view<bool> const& mask, stype type);
+
+ //: apply a probability image to set probabilites 
+ bool apply(vil_image_view<float> const & prob, stype type);
+ 
 
  //: map string to surface_type index
  stype type_from_string(std::string const& type_string) {

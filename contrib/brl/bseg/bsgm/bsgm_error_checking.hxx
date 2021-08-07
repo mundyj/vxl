@@ -124,7 +124,7 @@ static std::vector<std::vector<std::tuple<int, int> > > step_mask(int radius, vg
 template <class T>
 void bsgm_shadow_step_filter(
   const vil_image_view<T>& img,
-  vil_image_view<bool>& step_img,
+  vil_image_view<float>& step_prob_img,
   const vgl_vector_2d<float>& sun_dir,
   int radius,
   int response_low,
@@ -132,21 +132,24 @@ void bsgm_shadow_step_filter(
   int sum_coef;
   std::vector<std::tuple<int, int, int> > deriv_pix_offset = step_filter(radius, sun_dir, sum_coef);
   int ni = img.ni(), nj = img.nj(), ns = deriv_pix_offset.size();
-  vil_image_view<int> resp_img(ni, nj);
+  vil_image_view<float> resp_img(ni, nj);
+  resp_img.fill(0.0f);
+  vil_image_view<T> min_img(ni, nj);
+  min_img.fill(0);
   resp_img.fill(0);
-  vil_image_view<T> debug_resp_img(ni, nj);
-  debug_resp_img.fill(0);
-  vil_image_view<T> center(ni, nj);
-  center.fill(0);
-  step_img.set_size(ni, nj);
-  step_img.fill(false);
+  vil_image_view<float> debug_resp_img(ni, nj);
+  debug_resp_img.fill(0.0f);
+  vil_image_view<float> center(ni, nj);
+  center.fill(0.0f);
+  step_prob_img.set_size(ni, nj);
+  step_prob_img.fill(0.0f);
   // border
   int itstart = int(radius) + 1;
   for (int j = itstart; j < (nj - itstart); ++j)
     for (int i = itstart; i < (ni - itstart); ++i)
     {
       int resp = 0;
-      int vmin = 2048; //max 11 bits + 1
+      T vmin = 2048; //max 11 bits + 1
       for (int k = 0; k < ns; ++k)
       {
         int di = std::get<0>(deriv_pix_offset[k]);
@@ -157,52 +160,65 @@ void bsgm_shadow_step_filter(
           continue;
         if(off_j<0 || off_j >= nj)
           continue;
-        float v = img(off_i, off_j);
-        resp += wd * v;
-        if(v<vmin)
+        T v = img(off_i, off_j);
+        resp += float(wd) * v;
+        if (k == 0)
           vmin = v;
       }
-      resp /= sum_coef;
-      if(vmin < shadow_high && resp > response_low)
-        resp_img(i, j) = resp;
+      min_img(i,j) = T(vmin);
+      resp /= float(sum_coef);
+      resp = float(resp)/float(vmin+0.5f);
+      resp_img(i, j) = resp;
+      debug_resp_img(i, j) = resp;
     }
+  std::string temp = "D:/tests/BuckleyAFB/results_7_15_2021/target_rect_space_stype/resp.tif";
+  std::string temp_min = "D:/tests/BuckleyAFB/results_7_15_2021/target_rect_space_stype/min_img.tif";
+  vil_save(debug_resp_img, temp.c_str());
+  vil_save(min_img, temp_min.c_str());
   // compute peak response location
   T max_pix = std::numeric_limits<T>::max();
+ 
   for (int j = itstart; j < (nj - itstart); ++j)
     for (int i = itstart; i < (ni - itstart); ++i)
     {
-      int v = resp_img(i, j);
-      if(v == 0)
+      float v = resp_img(i, j);
+      if (v == 0.0f)
         continue;
-      int k_max = 0, v_max = 0;
+      int k_max = 0, v_max = 0.0f;
       for (int k = 0; k < ns; ++k)
       {
         int di = std::get<0>(deriv_pix_offset[k]);
         int dj = std::get<1>(deriv_pix_offset[k]);
-        int off_i = i+di, off_j = j+dj;
-        if(off_i<0 || off_i >= ni)
+        int off_i = i + di, off_j = j + dj;
+        if (off_i < 0 || off_i >= ni)
           continue;
-        if(off_j<0 || off_j >= nj)
+        if (off_j < 0 || off_j >= nj)
           continue;
-        int v = resp_img(off_i, off_j);
+        float v = resp_img(off_i, off_j);
         if (v > v_max)
         {
           v_max = v;
           k_max = k;
         }
       }
-      if (k_max == radius)
+      if (k_max == radius )
+      {
         center(i, j) = v_max;
+      }
+         
     }  
+  std::string tempc = "D:/tests/BuckleyAFB/results_7_15_2021/target_rect_space_stype/center.tif";
+  vil_save(center, tempc.c_str());
   int invalid_r = 2*radius;
   std::vector<std::vector<std::tuple<int, int> > > invalid_offset = step_mask(invalid_r, sun_dir);
   int invalid_itstart = int(invalid_r) + 1;
   for (int j = invalid_itstart; j < (nj - invalid_itstart); ++j)
     for (int i = invalid_itstart; i < (ni - invalid_itstart); ++i)
     {
-      int v = center(i, j);
-      if (v == 0)
+      float v = center(i, j);
+      if (v == 0.0f)
         continue;
+      float p = v / (2.0f + v);
       for (size_t w = 0; w < invalid_offset.size(); ++w)
       {
         int invalid_ns = invalid_offset[w].size();
@@ -215,10 +231,10 @@ void bsgm_shadow_step_filter(
             continue;
           if(off_j<0 || off_j >= nj)
             continue;
-          if (k <= invalid_r)
-            step_img(off_i, off_j) = true;
+          if (k <= invalid_r) // stop at roof edge
+            step_prob_img(off_i, off_j) = p;
         }
-        step_img(i, j) = true;
+        step_prob_img(i, j) = p;
       }
     }
 }
@@ -595,7 +611,7 @@ template void bsgm_compute_invalid_map(const vil_image_view<T>& , const vil_imag
 template void bsgm_check_nonunique(vil_image_view<float>& , const vil_image_view<unsigned short>&,\
                                    const vil_image_view<T>&, float, unsigned short, int,          \
                                    const vgl_box_2d<int>&);                                       \
-template void bsgm_shadow_step_filter(const vil_image_view<T>&, vil_image_view<bool>&,            \
+template void bsgm_shadow_step_filter(const vil_image_view<T>&, vil_image_view<float>&,            \
                                       const vgl_vector_2d<float>&, int, int, int)                
 
 #endif // bsgm_error_checking_h_

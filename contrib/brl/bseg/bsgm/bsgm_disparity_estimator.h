@@ -69,11 +69,10 @@ struct bsgm_disparity_estimator_params
   unsigned short shadow_thresh;
 
   //: Set "bias_weight" to the range (0.0,1.0] to bias the SGM directional average
-  // against the "bias_dir" parameter.  Use this if smoothing from certain
+  // against the sun_dir_tar_ vector.  Use this if smoothing from certain
   // directions (i.e. sun angle for satellite imagery) is unreliable.  Set to
-  // 0 to disable biasing.
+  // 0 to disable biasing. 
   float bias_weight;
-  vgl_vector_2d<float> bias_dir;
 
   bool remove_shadow_overhang;
 
@@ -104,7 +103,6 @@ struct bsgm_disparity_estimator_params
     error_check_mode(1),
     shadow_thresh(0),
     bias_weight(0.0f),
-    bias_dir(1.0f,0.0f),
     census_weight(0.3f),
     xgrad_weight(0.7f),
     census_tol(2),
@@ -127,8 +125,10 @@ class bsgm_disparity_estimator
     const bsgm_disparity_estimator_params& params,
     long long int cost_volume_width,
     long long int cost_volume_height,
-    long long int num_disparities);
-    //: Destructor
+    long long int num_disparities,
+    vgl_vector_2d<float> const& sun_dir_tar = vgl_vector_2d<float>(0.0f, 0.0f));
+  
+  //: Destructor
   ~bsgm_disparity_estimator();
 
   //: Run the SGM algorithm to compute a disparity map for the img_target,
@@ -184,6 +184,9 @@ class bsgm_disparity_estimator
   std::vector< std::vector< unsigned char* > > fused_cost_;
 
   std::vector< std::vector< unsigned char* > >* active_app_cost_;
+
+  //: sun direction in rectified image space
+  vgl_vector_2d<float> sun_dir_tar_;
 
   //
   // Sub-routines called by SGM in order
