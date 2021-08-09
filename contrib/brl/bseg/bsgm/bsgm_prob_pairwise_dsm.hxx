@@ -274,31 +274,33 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::compute_disparity_fwd()
                     rect_target_window_, rect_reference_window_);
 
   //apply invalid map to surface_types
-  rect_space_0_type_ = bsgm_surface_type(bsgm_surface_type::RECTIFIED_TARGET, rect_bview0_.ni(), rect_bview1_.nj());
-  rect_space_0_type_.apply(invalid_map_fwd_, bsgm_surface_type::INVALID_DATA);
+  rect_space_target_ = bsgm_surface_type(bsgm_surface_type::RECTIFIED_TARGET, rect_bview0_.ni(), rect_bview1_.nj());
+  rect_space_target_.apply(invalid_map_fwd_, bsgm_surface_type::INVALID_DATA);
 
   // apply shadow profile mask to surface_types
-  vil_image_view<float> roof_overhang_mask;
+  vil_image_view<float> shadow_step;
    std::cout << "SUN DIR 0 " << sun_dir_0_ << std::endl;
-  bsgm_shadow_step_filter<PIX_T>(rect_bview0_, roof_overhang_mask, sun_dir_0_, params_.shadow_profile_radius_, params_.response_low_,params_.shadow_high_);
+   bsgm_shadow_step_filter<PIX_T>(rect_bview0_, invalid_map_fwd_, shadow_step, sun_dir_0_, params_.shadow_profile_radius_, params_.response_low_,params_.shadow_high_);
   std::string step_debug_path = "D:/tests/BuckleyAFB/results_7_15_2021/target_rect_space_stype/debug_step_mask.tif";
-  vil_save(roof_overhang_mask, step_debug_path.c_str());
+  vil_save(shadow_step, step_debug_path.c_str());
   std::string color_step_debug_path = "D:/tests/BuckleyAFB/results_7_15_2021/target_rect_space_stype/color_roof_overhang.tif";
-  vil_image_view<float> color_overhang(rect_bview0_.ni(), rect_bview0_.nj(), 3);
+  vil_image_view<float> color_step(rect_bview0_.ni(), rect_bview0_.nj(), 3);
+  
   for (size_t j = 0; j < rect_bview0_.nj(); ++j)
       for (size_t i = 0; i < rect_bview0_.ni(); ++i)
       {
-        float p = roof_overhang_mask(i, j);
+        float p = shadow_step(i, j);
         float v = rect_bview0_(i, j);
         float r = v /(1 - p);
         float g = v;
         float b = v;
-        color_overhang(i, j, 0) = r;
-        color_overhang(i, j, 1) = g;
-        color_overhang(i, j, 1) = b;
+        color_step(i, j, 0) = r;
+        color_step(i, j, 1) = g;
+        color_step(i, j, 1) = b;
     }
-  vil_save(color_overhang, color_step_debug_path.c_str());
-  rect_space_0_type_.apply(roof_overhang_mask, bsgm_surface_type::ROOF_OVERHANG);
+  
+  vil_save(color_step, color_step_debug_path.c_str());
+  rect_space_target_.apply(shadow_step, bsgm_surface_type::SHADOW_STEP);
 }
 
 // compute reverse disparity

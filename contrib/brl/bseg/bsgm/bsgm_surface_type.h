@@ -22,7 +22,7 @@
 class bsgm_surface_type
 {
  public:
-  enum stype { NO_DATA, INVALID_DATA, SHADOW, ROOF_OVERHANG, NO_SURFACE_TYPE};
+  enum stype { NO_DATA, INVALID_DATA, SHADOW, SHADOW_STEP, NO_SURFACE_TYPE};
   enum source { RECTIFIED_TARGET, DSM, NO_SOURCE};
 
  bsgm_surface_type():ni_(0), nj_(0){init_type_names();}
@@ -103,7 +103,7 @@ class bsgm_surface_type
     type_names_[NO_DATA] = "no_data";
     type_names_[INVALID_DATA] = "invalid_data";
     type_names_[SHADOW] = "shadow";
-    type_names_[ROOF_OVERHANG] = "roof_overhang";
+    type_names_[SHADOW_STEP] = "shadow_step";
   }
   void init_type_images(){
     for(std::map<stype, std::string>::iterator nit = type_names_.begin();

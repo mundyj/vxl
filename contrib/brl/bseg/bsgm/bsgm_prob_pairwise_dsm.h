@@ -346,9 +346,8 @@ class bsgm_prob_pairwise_dsm
   const vil_image_view<float>& prob_confidence() const { return prob_heightmap_prob_; }
   const vil_image_view<float>& radial_std_dev_image() const {return radial_std_dev_image_; }
 
-  const bsgm_surface_type & rect_0_stype() const  { return rect_space_0_type_; }
-  const bsgm_surface_type & rect_1_stype() const  { return rect_space_1_type_; }
-  const bsgm_surface_type & dsm_grid_stype() const { return dsm_grid_space_type_; }
+  const bsgm_surface_type & rect_target_stype() const  { return rect_space_target_; }
+  const bsgm_surface_type & dsm_grid_stype() const { return dsm_grid_space_; }
   
   // PROCESS-----
 
@@ -542,9 +541,8 @@ class bsgm_prob_pairwise_dsm
   vgl_vector_2d<float> sun_dir_1_;
 
   // define surface type probability layers
-  bsgm_surface_type rect_space_0_type_;
-  bsgm_surface_type rect_space_1_type_;
-  bsgm_surface_type dsm_grid_space_type_;
+  bsgm_surface_type rect_space_target_;
+  bsgm_surface_type dsm_grid_space_;
 
   bool affine_;  // vs. perspective
   pairwise_params params_;
