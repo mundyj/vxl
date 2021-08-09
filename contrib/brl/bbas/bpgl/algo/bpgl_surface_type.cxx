@@ -1,4 +1,4 @@
-#include "bsgm_surface_type.h"
+#include "bpgl_surface_type.h"
 #include <vil/vil_load.h>
 #include <vil/vil_save.h>
 #include <vul/vul_file.h>
@@ -6,7 +6,7 @@
 #include <fstream>
 #include <stdexcept>
 
-bool bsgm_surface_type::load_surface_types(std::string const& directory) {
+bool bpgl_surface_type::load_surface_types(std::string const& directory) {
   if (!vul_file::is_directory(directory)) {
     std::string message = "category directory not accessable" + directory;
     std::cout << message << std::endl;
@@ -39,7 +39,7 @@ bool bsgm_surface_type::load_surface_types(std::string const& directory) {
   return true;
 }
 
-bool bsgm_surface_type::save_surface_types(std::string const& directory) {
+bool bpgl_surface_type::save_surface_types(std::string const& directory) {
   if (!vul_file::is_directory(directory)) {
     std::string message = "category directory not accessable" + directory;
     std::cout << message << std::endl;
@@ -64,7 +64,7 @@ bool bsgm_surface_type::save_surface_types(std::string const& directory) {
   return true;
 }
 
-bool bsgm_surface_type::apply(vil_image_view<bool> const& mask, stype type){
+bool bpgl_surface_type::apply(vil_image_view<bool> const& mask, stype type){
   if(type_images_.count(type) == 0){
     std::cout << "specified type " << type << " does not exist" << std::endl;
     return false;
@@ -82,7 +82,7 @@ bool bsgm_surface_type::apply(vil_image_view<bool> const& mask, stype type){
     }
   return true;
 }
-bool bsgm_surface_type::apply(vil_image_view<float> const& prob, stype type)
+bool bpgl_surface_type::apply(vil_image_view<float> const& prob, stype type)
 {
   if (type_images_.count(type) == 0)
   {
