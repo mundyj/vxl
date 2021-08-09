@@ -53,9 +53,10 @@
 #include <bpgl/algo/bpgl_rectify_image_pair.h>
 #include <bpgl/algo/bpgl_heightmap_from_disparity.h>
 #include <bpgl/algo/bpgl_gridding.h>
+#include <bpgl/algo/bpgl_surface_type.h>
 #include <bsta/bsta_histogram.h>
 #include "bsgm_disparity_estimator.h" // for disparity_estimator_params
-#include "bsgm_surface_type.h"
+
 
 struct pairwise_params
 {
@@ -346,8 +347,8 @@ class bsgm_prob_pairwise_dsm
   const vil_image_view<float>& prob_confidence() const { return prob_heightmap_prob_; }
   const vil_image_view<float>& radial_std_dev_image() const {return radial_std_dev_image_; }
 
-  const bsgm_surface_type & rect_target_stype() const  { return rect_space_target_; }
-  const bsgm_surface_type & dsm_grid_stype() const { return dsm_grid_space_; }
+  const bpgl_surface_type & rect_target_stype() const  { return rect_space_target_; }
+  const bpgl_surface_type & dsm_grid_stype() const { return dsm_grid_space_; }
   
   // PROCESS-----
 
@@ -541,8 +542,8 @@ class bsgm_prob_pairwise_dsm
   vgl_vector_2d<float> sun_dir_1_;
 
   // define surface type probability layers
-  bsgm_surface_type rect_space_target_;
-  bsgm_surface_type dsm_grid_space_;
+  bpgl_surface_type rect_space_target_;
+  bpgl_surface_type dsm_grid_space_;
 
   bool affine_;  // vs. perspective
   pairwise_params params_;

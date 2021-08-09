@@ -1,6 +1,6 @@
-// This is//terra/bsgm_surface_type_image.h
-#ifndef bsgm_surface_type_image_h
-#define bsgm_surface_type_image_h
+// This is//terra/bpgl_surface_type_image.h
+#ifndef bpgl_surface_type_image_h
+#define bpgl_surface_type_image_h
 
 //:
 // \file
@@ -19,22 +19,22 @@
 #include <limits>
 #include <string>
 #include <vil/vil_image_view.h>
-class bsgm_surface_type
+class bpgl_surface_type
 {
  public:
   enum stype { NO_DATA, INVALID_DATA, SHADOW, SHADOW_STEP, NO_SURFACE_TYPE};
   enum source { RECTIFIED_TARGET, DSM, NO_SOURCE};
 
- bsgm_surface_type():ni_(0), nj_(0){init_type_names();}
+ bpgl_surface_type():ni_(0), nj_(0){init_type_names();}
 
- bsgm_surface_type(source s, size_t ni, size_t nj):source_(s), ni_(ni), nj_(nj){init_type_names(); init_type_images();}
+ bpgl_surface_type(source s, size_t ni, size_t nj):source_(s), ni_(ni), nj_(nj){init_type_names(); init_type_images();}
 
   //: from list of surface_type images
- bsgm_surface_type(source const& s, std::map<stype, vil_image_view<float> > const& type_images): source_(s), type_images_(type_images){init_type_names();
+ bpgl_surface_type(source const& s, std::map<stype, vil_image_view<float> > const& type_images): source_(s), type_images_(type_images){init_type_names();
     ni_ = type_images_[NO_DATA].ni();nj_ = type_images_[NO_DATA].nj();}
 
   //:load from tif files
- bsgm_surface_type(std::string const& directory) { this->load_surface_types(directory); }
+ bpgl_surface_type(std::string const& directory) { this->load_surface_types(directory); }
 
  //: set type image layer
  bool set_type_image(stype type, vil_image_view<float> const& type_image){

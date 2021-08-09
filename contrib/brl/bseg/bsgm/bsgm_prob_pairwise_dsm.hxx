@@ -274,8 +274,8 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::compute_disparity_fwd()
                     rect_target_window_, rect_reference_window_);
 
   //apply invalid map to surface_types
-  rect_space_target_ = bsgm_surface_type(bsgm_surface_type::RECTIFIED_TARGET, rect_bview0_.ni(), rect_bview1_.nj());
-  rect_space_target_.apply(invalid_map_fwd_, bsgm_surface_type::INVALID_DATA);
+  rect_space_target_ = bpgl_surface_type(bpgl_surface_type::RECTIFIED_TARGET, rect_bview0_.ni(), rect_bview1_.nj());
+  rect_space_target_.apply(invalid_map_fwd_, bpgl_surface_type::INVALID_DATA);
 
   // apply shadow profile mask to surface_types
   vil_image_view<float> shadow_step;
@@ -300,7 +300,7 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::compute_disparity_fwd()
     }
   
   vil_save(color_step, color_step_debug_path.c_str());
-  rect_space_target_.apply(shadow_step, bsgm_surface_type::SHADOW_STEP);
+  rect_space_target_.apply(shadow_step, bpgl_surface_type::SHADOW_STEP);
 }
 
 // compute reverse disparity
