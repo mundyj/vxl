@@ -273,6 +273,7 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::compute_disparity_fwd()
                     invalid_map_fwd_, disparity_fwd_,
                     rect_target_window_, rect_reference_window_);
 
+#if 1
   //apply invalid map to surface_types
   rect_space_target_ = bpgl_surface_type(bpgl_surface_type::RECTIFIED_TARGET, rect_bview0_.ni(), rect_bview1_.nj());
   rect_space_target_.apply(invalid_map_fwd_, bpgl_surface_type::INVALID_DATA);
@@ -283,7 +284,7 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::compute_disparity_fwd()
    bsgm_shadow_step_filter<PIX_T>(rect_bview0_, invalid_map_fwd_, shadow_step, sun_dir_0_, params_.shadow_profile_radius_, params_.response_low_,params_.shadow_high_);
   std::string step_debug_path = "D:/tests/BuckleyAFB/results_7_15_2021/target_rect_space_stype/debug_step_mask.tif";
   vil_save(shadow_step, step_debug_path.c_str());
-  std::string color_step_debug_path = "D:/tests/BuckleyAFB/results_7_15_2021/target_rect_space_stype/color_roof_overhang.tif";
+  std::string color_step_debug_path = "D:/tests/BuckleyAFB/results_7_15_2021/target_rect_space_stype/color_step_mask.tif";
   vil_image_view<float> color_step(rect_bview0_.ni(), rect_bview0_.nj(), 3);
   
   for (size_t j = 0; j < rect_bview0_.nj(); ++j)
@@ -301,6 +302,7 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::compute_disparity_fwd()
   
   vil_save(color_step, color_step_debug_path.c_str());
   rect_space_target_.apply(shadow_step, bpgl_surface_type::SHADOW_STEP);
+#endif
 }
 
 // compute reverse disparity
@@ -323,13 +325,15 @@ template <class CAM_T, class PIX_T>
 void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::compute_height(const CAM_T& cam, const CAM_T& cam_reference,
                                                    const vil_image_view<float>& disparity,
                                                    vil_image_view<float>& tri_3d, vgl_pointset_3d<float>& ptset,
-                                                   vil_image_view<float>& heightmap)
+                                                   vil_image_view<float>& heightmap,
+                                                   std::map<size_t, std::pair<size_t, size_t> >& pt_index_to_pix)
 {
   // triangulated image
   tri_3d = bpgl_3d_from_disparity(cam, cam_reference, disparity, params_.disparity_sense_);
   // convert triangulated image to pointset & heightmap
   auto bh = this->get_bpgl_heightmap();
-  bh.pointset_from_tri(tri_3d, ptset);
+  //bh.pointset_from_tri(tri_3d, ptset);
+  bh.pointset_from_tri(tri_3d, ptset, pt_index_to_pix);
   bh.heightmap_from_pointset(ptset, heightmap);
 }
 
@@ -382,12 +386,22 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::compute_height_fwd(bool compute_hmap)
     }
   }
 
-  if (compute_hmap)
+  if (compute_hmap){
+    std::map<size_t, std::pair<size_t, size_t> > pt_index_to_pix;
     this->compute_height(rect_cam0_window, rect_cam1_window, disparity_fwd_,
-                         tri_3d_fwd_, ptset_fwd_, heightmap_fwd_);
-  else
+                         tri_3d_fwd_, ptset_fwd_, heightmap_fwd_, pt_index_to_pix);
+#if 1
+    std::string path = "D:/tests/BuckleyAFB/results_7_15_2021/target_rect_space_stype/ptset_from_tri.txt";
+    std::ofstream ostr(path.c_str());
+    ostr << ptset_fwd_;
+    dsm_grid_space_.set_size(bpgl_surface_type::DSM, heightmap_fwd_.ni(), heightmap_fwd_.nj());
+    auto bh = this->get_bpgl_heightmap();
+    bh.surface_type_from_pointset(ptset_fwd_, rect_space_target_,pt_index_to_pix, dsm_grid_space_);
+#endif
+      }else{
     tri_3d_fwd_ = bpgl_3d_from_disparity(rect_cam0_window, rect_cam1_window,
                                          disparity_fwd_, params_.disparity_sense_);
+  }
 }
 
 // compute reverse height
@@ -403,7 +417,7 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::compute_height_rev(bool compute_hmap)
     translate_camera_into_window(rect_cam0_window, rect_reference_window_);
     translate_camera_into_window(rect_cam1_window, rect_reference_window_);
   }
-
+  
   if (compute_hmap)
     this->compute_height(rect_cam1_window, rect_cam0_window, disparity_rev_,
                          tri_3d_rev_, ptset_rev_, heightmap_rev_);
