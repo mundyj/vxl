@@ -38,7 +38,7 @@ vil_image_view<T> bpgl_heightmap_from_disparity(
 template<class T>
 class bpgl_heightmap
 {
-  public:
+public:
 
     //: constructor
     bpgl_heightmap() = default;
@@ -46,8 +46,8 @@ class bpgl_heightmap
     bpgl_heightmap(
         vgl_box_3d<T> heightmap_bounds,
         T ground_sample_distance) :
-      heightmap_bounds_(heightmap_bounds),
-      ground_sample_distance_(ground_sample_distance)
+        heightmap_bounds_(heightmap_bounds),
+        ground_sample_distance_(ground_sample_distance)
     {}
 
     //: destructor
@@ -110,7 +110,17 @@ class bpgl_heightmap
         vil_image_view<T>& heightmap_output,
         vil_image_view<T>& scalar_output);
 
-  private:
+    void pointset_from_tri(
+          const vil_image_view<T>& tri_3d,
+          vgl_pointset_3d<T>& ptset_output,
+          std::map<size_t, std::pair<size_t, size_t> >& pt_index_to_pix
+        );
+    void surface_type_from_pointset(
+        const vgl_pointset_3d<T> & ptset,
+        const bpgl_surface_type & disparity_stype,
+        std::map<size_t, std::pair<size_t, size_t> > & pt_indx_to_pix,
+        bpgl_surface_type & heightmap_stype);
+ private:
 
     // compute pointset from triangulated image & scalar input
     // scalar usage controlled by "ignore_scalar" flag
@@ -127,19 +137,6 @@ class bpgl_heightmap
         vil_image_view<T>& heightmap_output,
         vil_image_view<T>& scalar_output,
         bool ignore_scalar);
-
-    void _heightmap_from_pointset(
-      const vgl_pointset_3d<T>& ptset,
-      const bpgl_surface_type& disparity_stype,
-      const std::map<size_t, std::pair<size_t, size_t> >& pt_indx_to_pix,
-      vil_image_view<T>& heightmap_output,
-      bpgl_surface_type& heightmap_stype);
-
-    void _pointset_from_tri(
-        const vil_image_view<T>& tri_3d,
-        vgl_pointset_3d<T>& ptset_output,
-        std::map<size_t, std::pair<size_t, size_t> >& pt_index_to_pix
-        );
 
     // parameters
     vgl_box_3d<T> heightmap_bounds_;

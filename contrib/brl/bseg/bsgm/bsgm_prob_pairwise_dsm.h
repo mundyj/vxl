@@ -508,7 +508,8 @@ class bsgm_prob_pairwise_dsm
     const vil_image_view<float>& disparity,
     vil_image_view<float>& tri_3d,
     vgl_pointset_3d<float>& ptset,
-    vil_image_view<float>& heightmap);
+    vil_image_view<float>& heightmap,
+    std::map<size_t, std::pair<size_t, size_t> >& pt_index_to_pix = std::map<size_t, std::pair<size_t, size_t> >());
 
   // display sun dir 
   void display_sun_dir_rect_bviews();

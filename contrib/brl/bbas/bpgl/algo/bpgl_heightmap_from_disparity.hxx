@@ -98,11 +98,12 @@ void bpgl_heightmap<T>::_pointset_from_tri(
   }
 
 }
+;
 template<class T>
-void _pointset_from_tri(
-        const vil_image_view<T>& tri_3d,
-        vgl_pointset_3d<T>& ptset_output,
-        std::map<size_t, std::pair<size_t, size_t> >& pt_index_to_pix)
+void
+bpgl_heightmap<T>::pointset_from_tri(const vil_image_view<T> & tri_3d,
+                   vgl_pointset_3d<T> & ptset_output,
+                   std::map<size_t, std::pair<size_t, size_t> > & pt_index_to_pix)
 {
   // bounds with tolerance (avoid any floating point error in comparison)
    T tol = 1e-3;
@@ -284,13 +285,12 @@ void bpgl_heightmap<T>::heightmap_from_pointset(
       radial_std_dev(i,j) = std_dev;
     }
 }
-// private function, scalar usage controlled by "ignore_scalar"
+
 template<class T>
-void bpgl_heightmap<T>::_heightmap_from_pointset(
+void bpgl_heightmap<T>::surface_type_from_pointset(
     const vgl_pointset_3d<T>& ptset,
     const bpgl_surface_type& disparity_stype,
-    const std::map<size_t, std::pair<size_t, size_t> >& pt_indx_to_pix,
-    vil_image_view<T>& heightmap_output,
+    std::map<size_t, std::pair<size_t, size_t> >& pt_indx_to_pix,
     bpgl_surface_type& heightmap_stype)
 {
   // check pointset sufficency
@@ -298,14 +298,12 @@ void bpgl_heightmap<T>::_heightmap_from_pointset(
     throw std::runtime_error("Not enough points in pointset for interpolation");
   }
 
-  // pointset as vectors
+  // pointset as 2-d points
   std::vector<vgl_point_2d<T> > triangulated_xy;
-  std::vector<T> height_vals;
-
+  
   for (const auto& point_3d : ptset.points()) {
     vgl_point_2d<T> point_2d(point_3d.x(), point_3d.y());
     triangulated_xy.emplace_back(point_2d);
-    height_vals.emplace_back(point_3d.z());
   }
 
   // image upper left & size
@@ -316,30 +314,16 @@ void bpgl_heightmap<T>::_heightmap_from_pointset(
 
   // maximum neighbor distance
   T max_dist = neighbor_dist_factor_ * ground_sample_distance_;
-
-  // default interpolation function
-  bpgl_gridding::linear_interp<T,T> interp_fun;
-
+  
   // heightmap gridding
-  heightmap_output = bpgl_gridding::grid_data_2d(
-      interp_fun,
-      triangulated_xy, height_vals,
+  bpgl_gridding::grid_surface_type_2d(
+      triangulated_xy,
       disparity_stype, pt_indx_to_pix, heightmap_stype,
-      upper_left, ni, nj, ground_sample_distance_,
+      upper_left, ground_sample_distance_,
       min_neighbors_, max_neighbors_, max_dist);
 
-  // bounds check to remove outliers
-  T min_z = heightmap_bounds_.min_z();
-  T max_z = heightmap_bounds_.max_z();
-
-  for (int j=0; j<nj; ++j) {
-    for (int i=0; i<ni; ++i) {
-      if ((heightmap_output(i,j) < min_z) || (heightmap_output(i,j) > max_z)) {
-        heightmap_output(i,j) = NAN;
-      }
-    }
   }
-}
+
 
 
 // ----------

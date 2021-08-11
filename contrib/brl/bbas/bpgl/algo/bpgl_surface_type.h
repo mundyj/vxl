@@ -30,12 +30,15 @@ class bpgl_surface_type
  bpgl_surface_type(source s, size_t ni, size_t nj):source_(s), ni_(ni), nj_(nj){init_type_names(); init_type_images();}
 
   //: from list of surface_type images
- bpgl_surface_type(source const& s, std::map<stype, vil_image_view<float> > const& type_images): source_(s), type_images_(type_images){init_type_names();
+ bpgl_surface_type(source const s, std::map<stype, vil_image_view<float> > const& type_images): source_(s), type_images_(type_images){init_type_names();
     ni_ = type_images_[NO_DATA].ni();nj_ = type_images_[NO_DATA].nj();}
 
   //:load from tif files
  bpgl_surface_type(std::string const& directory) { this->load_surface_types(directory); }
 
+ //: set size and intialize
+ void set_size(source const s, size_t ni, size_t nj) { source_ = s; ni_ = ni; nj_ = nj; init_type_images(); }
+   
  //: set type image layer
  bool set_type_image(stype type, vil_image_view<float> const& type_image){
    if((type_image.ni() != ni_) || (type_image.nj() != nj_))
@@ -44,7 +47,15 @@ class bpgl_surface_type
    return true;
  }
  //: get type probability (set as well)
- float& p(size_t i, size_t j, stype type){ return type_images_[type](i, j);}
+ float& p(size_t i, size_t j, stype type) { return type_images_[type](i, j);}
+
+ //: const probability accessor
+ float const_p(size_t i, size_t j, stype type) const {
+     auto it = type_images_.find(type);
+     if (it == type_images_.end())
+         return 0.0f;
+   return it->second(i, j);
+ }
 
  //: apply a bool image to set probabilites to 1.0f == true, 0.0f == false
  bool apply(vil_image_view<bool> const& mask, stype type);
@@ -82,9 +93,10 @@ class bpgl_surface_type
   bool save_surface_types(std::string const& path);
 
   //: accessors
-  size_t ni(){return ni_;}
-  size_t nj(){return nj_;}
+  size_t ni() const {return ni_;}
+  size_t nj() const {return nj_;}
   source source_id() const {return source_;}
+
   std::vector<std::string> defined_types() const{
     std::vector<std::string> ret;
     for(std::map<stype, std::string>::const_iterator nit = type_names_.begin();
@@ -97,13 +109,14 @@ class bpgl_surface_type
   vil_image_view<float>& type_image(stype type){
     return type_images_[type];
   }
-    private:
+ std::vector<bpgl_surface_type::stype>& stypes()  { return types_; }
+ private:
   // internal methods
   void init_type_names(){
-    type_names_[NO_DATA] = "no_data";
-    type_names_[INVALID_DATA] = "invalid_data";
-    type_names_[SHADOW] = "shadow";
-    type_names_[SHADOW_STEP] = "shadow_step";
+    type_names_[NO_DATA] = "no_data";           types_.push_back(NO_DATA);
+    type_names_[INVALID_DATA] = "invalid_data"; types_.push_back(INVALID_DATA);
+    type_names_[SHADOW] = "shadow";             types_.push_back(SHADOW);
+    type_names_[SHADOW_STEP] = "shadow_step";   types_.push_back(SHADOW_STEP);
   }
   void init_type_images(){
     for(std::map<stype, std::string>::iterator nit = type_names_.begin();
@@ -116,7 +129,8 @@ class bpgl_surface_type
   source source_; 
   size_t ni_;
   size_t nj_;
+  std::vector<stype> types_;
   std::map<stype, std::string> type_names_;
   std::map<stype, vil_image_view<float> > type_images_;
 };
-#endif
+#endif//bpgl_surface_type_image_h
