@@ -19,6 +19,7 @@
 #include <vnl/vnl_math.h>
 #include <vgl/vgl_distance.h>
 #include "bpgl_surface_type.h"
+#include <vil/vil_save.h>
 #ifdef _MSC_VER
 #  include <vcl_msvc_warnings.h>
 #endif
@@ -340,7 +341,9 @@ void grid_surface_type_2d(
     T max_dist = vnl_numeric_traits<T>::maxval)
 {
   std::vector<bpgl_surface_type::stype>& styps = heightmap_stype.stypes();
-
+  size_t dni = disparity_stype.ni(), dnj = disparity_stype.nj();
+  size_t hni = heightmap_stype.ni(), hnj = heightmap_stype.nj();
+ 
  // total number of points
  size_t npts = data_in_loc.size();
 
@@ -367,56 +370,57 @@ void grid_surface_type_2d(
  }
  size_t out_ni = heightmap_stype.ni(), out_nj = heightmap_stype.nj();
  vgl_vector_2d<T> i_vec(T(1), T(0));
- vgl_vector_2d<T> j_vec(T(0), -T(1));//spatial y coordinate is opposite the image j coordinate
+ vgl_vector_2d<T> j_vec(T(0), -T(1));//spatial y coordinate is negated image j coordinate
+ 
+ for (unsigned j=0; j<hnj; ++j) {
+     for (unsigned i = 0; i < hni; ++i) {
 
- for (unsigned j=0; j<out_nj; ++j) {
-   for (unsigned i=0; i<out_ni; ++i) {
+         // grid point
+         vgl_point_2d<T> loc = out_upper_left + i * step_size * i_vec + j * step_size * j_vec;
 
-     // grid point
-     vgl_point_2d<T> loc = out_upper_left + i*step_size*i_vec + j*step_size*j_vec;
+         // retrieve at most max_neighbors within max_dist of interpolation point
+         std::vector<vgl_point_2d<T> > neighbor_locs;
+         std::vector<unsigned> neighbor_indices;
+         if (!knn.knn(loc, max_neighbors, neighbor_locs, neighbor_indices, max_dist)) {
+             throw std::runtime_error("KNN failed to return neighbors");
+         }
 
-     // retrieve at most max_neighbors within max_dist of interpolation point
-     std::vector<vgl_point_2d<T> > neighbor_locs;
-     std::vector<unsigned> neighbor_indices;
-     if (!knn.knn(loc, max_neighbors, neighbor_locs, neighbor_indices, max_dist)) {
-       throw std::runtime_error("KNN failed to return neighbors");
-     }
-     if (i == 555 && j == 340) {  
-         for (size_t k = 0; k < neighbor_locs.size(); ++k)
-             std::cout << vgl_distance(neighbor_locs[k], loc) << std::endl;
-     }
-     // check for at least min_neighbors
-     if (neighbor_indices.size() < min_neighbors) {
-       heightmap_stype.p(i,j, bpgl_surface_type::INVALID_DATA) = 1.0f;
-       continue;
-     }
-     // only consider neighbors within circumscribed circle around grid cell
-     // that touches the center of adjacent cells
-     std::vector<size_t> reduced_indices;
-     size_t iidx = 0;
-     float ccirc_radius = step_size*vnl_math::sqrt2;
-     for (auto p : neighbor_locs) {
-         if (vgl_distance(p, loc) <= ccirc_radius)
-             reduced_indices.push_back(neighbor_indices[iidx]);
-         ++iidx;
-     }
-     if (reduced_indices.size() == 0 ) {
-         heightmap_stype.p(i, j, bpgl_surface_type::INVALID_DATA) = 1.0f;
-         continue;
-     }
-     // pix values in disparity space surface type
-     // take min probabilty as characteristic of grid cell.
-     for(auto t : styps) {
-         float min_p = 1.0f;
-         for (auto nidx : reduced_indices) {
+         // check for at least min_neighbors
+         if (neighbor_indices.size() < min_neighbors) {
+             heightmap_stype.p(i, j, bpgl_surface_type::INVALID_DATA) = 1.0f;
+             continue;
+         }
+         // only consider neighbors within circumscribed circle around grid cell
+         // that touches the center of adjacent cells
+         std::vector<size_t> reduced_indices;
+         size_t iidx = 0;
+         float ccirc_radius = step_size * vnl_math::sqrt2;
+         for (auto p : neighbor_locs) {
+             if (vgl_distance(p, loc) <= ccirc_radius)
+               reduced_indices.push_back(neighbor_indices[iidx]);
+             ++iidx;
+         }
+         if (reduced_indices.size() == 0) {
+             heightmap_stype.p(i, j, bpgl_surface_type::INVALID_DATA) = 1.0f;
+             continue;
+         }
+         
+
+         // pix values in disparity space surface type
+         // take min probabilty as characteristic of grid cell.
+         for (auto t : styps) {
+           float min_p = 1.0f;
+           for (auto nidx : reduced_indices) {
              std::pair<size_t, size_t> pix = pt_indx_to_pix[nidx];
              size_t di = pix.first, dj = pix.second;
+             if (di >= dni || dj >= dnj)
+               continue;
              float p = disparity_stype.const_p(di, dj, t);
              if (p < min_p) min_p = p;
+           }
+           heightmap_stype.p(i, j, t) = min_p;
          }
-         heightmap_stype.p(i, j, t) = min_p;
-     }
-   }//end i,
+     }//end i,
  }//end j
 }// end grid
  

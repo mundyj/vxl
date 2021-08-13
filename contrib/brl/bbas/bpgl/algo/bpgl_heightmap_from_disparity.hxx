@@ -309,8 +309,6 @@ void bpgl_heightmap<T>::surface_type_from_pointset(
   // image upper left & size
   // image must contain all samples within bounds, inclusive
   vgl_point_2d<T> upper_left(heightmap_bounds_.min_x(), heightmap_bounds_.max_y());
-  size_t ni = static_cast<size_t>(std::floor(heightmap_bounds_.width() / ground_sample_distance_ + 1));
-  size_t nj = static_cast<size_t>(std::floor(heightmap_bounds_.height() / ground_sample_distance_ + 1));
 
   // maximum neighbor distance
   T max_dist = neighbor_dist_factor_ * ground_sample_distance_;

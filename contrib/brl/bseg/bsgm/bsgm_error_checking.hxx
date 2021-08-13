@@ -142,6 +142,7 @@ bsgm_shadow_step_filter(const vil_image_view<T> & img,
                         int response_low,
                         int shadow_high)
 {
+  std::cout << "start shadow_step filter " << sun_dir << std::endl;
   int sum_coef;
   std::vector<std::tuple<int, int, int>> deriv_pix_offset = step_filter(radius, sun_dir, sum_coef);
   int ni = img.ni(), nj = img.nj(), ns = deriv_pix_offset.size();
@@ -158,14 +159,12 @@ bsgm_shadow_step_filter(const vil_image_view<T> & img,
   step_prob_img.fill(0.0f);
   // border
   int itstart = int(radius) + 1;
-
   for (int j = itstart; j < (nj - itstart); ++j)
     for (int i = itstart; i < (ni - itstart); ++i)
     {
       bool any_invalid = false;
       float resp = 0;
       T vmin = 2048; // max 11 bits + 1
-      int min_i = 0, min_j = 0;
       bool print = (i == 1128 && j == 211);
       for (int k = 0; (k < ns) && !any_invalid; ++k)
       {
@@ -186,26 +185,12 @@ bsgm_shadow_step_filter(const vil_image_view<T> & img,
         T v = img(off_i, off_j);
         resp += float(wd) * v;
         if (k == 0)
-        {
           vmin = v;
-          min_i = off_i;
-          min_j = off_j;
-        }
       }
       if (!any_invalid)
-      {
-        float vim = img(min_i - 1, min_j), vip = img(min_i + 1, min_j);
-        float vjm = img(min_i, min_j - 1), vjp = img(min_i, min_j + 1);
-        
-       if (vmin == 0|| vim == 0.0f||vip == 0.0f||vjm == 0.0f||vjp == 0.0f)
         {
-          resp_img(i, j) = 0;
-          debug_resp_img(i, j) = 0;
-          continue;
-        }
-        min_img(i, j) = vmin;
         resp /= float(sum_coef);
-        resp = float(resp) / float(vmin);
+        resp = float(resp) / (float(vmin)+1.0f);
         resp_img(i, j) = resp;
         debug_resp_img(i, j) = resp;
       }
@@ -216,10 +201,6 @@ bsgm_shadow_step_filter(const vil_image_view<T> & img,
         debug_resp_img(i, j) = resp;
       }
     }
-  std::string temp = "D:/tests/BuckleyAFB/results_7_15_2021/target_rect_space_stype/resp.tif";
-  std::string temp_min = "D:/tests/BuckleyAFB/results_7_15_2021/target_rect_space_stype/min_img.tif";
-  vil_save(debug_resp_img, temp.c_str());
-  vil_save(min_img, temp_min.c_str());
   // compute peak response location
   T max_pix = std::numeric_limits<T>::max();
 
@@ -270,8 +251,6 @@ bsgm_shadow_step_filter(const vil_image_view<T> & img,
           center(i, j) = v_max;
         }
      }  
-  std::string tempc = "D:/tests/BuckleyAFB/results_7_15_2021/target_rect_space_stype/center.tif";
-  vil_save(center, tempc.c_str());
   int invalid_r = 2*radius;
   std::vector<std::vector<std::tuple<int, int> > > invalid_offset = step_mask(invalid_r, sun_dir);
   int invalid_itstart = int(invalid_r) + 1;
