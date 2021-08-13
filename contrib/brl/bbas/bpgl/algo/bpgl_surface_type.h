@@ -129,7 +129,7 @@ class bpgl_surface_type
     //map [] operator is non_const so need the implementation below
     std::map<stype, vil_image_view<float> >::const_iterator it = type_images_.find(type);
     if (it == type_images_.end())
-      false; 
+      return false; 
     type_image = it->second;
     return true;
   }
