@@ -12,7 +12,7 @@ bool bpgl_surface_type::load_surface_types(std::string const& directory) {
     std::cout << message << std::endl;
     return false;
   }
-  std::string glob = "directory/*.tif";
+  std::string glob = directory+"/*.tif";
   for (vul_file_iterator fn = glob; fn; ++fn) {
     std::string path = fn();
     vil_image_view<float> cat_img = vil_load(path.c_str());
