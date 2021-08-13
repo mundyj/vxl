@@ -26,13 +26,13 @@ bool bpgl_surface_type::load_surface_types(std::string const& directory) {
     stype t = this->type_from_string(type_str);
     type_images_[t] = cat_img;
   }
-  std::ifstream istr(directory + "/" + "source.txt");
+  std::ifstream istr(directory + "/" + "domain.txt");
   if (!istr) {
-    std::cout << "source.txt missing from directory" << std::endl;
+    std::cout << "domain.txt missing from directory" << std::endl;
     return false;
-    std::string source_str;
-    istr >> source_str;
-    source_ = this->source_from_string(source_str);
+    std::string domain_str;
+    istr >> domain_str;
+    domain_ = this->domain_from_string(domain_str);
   }
   ni_ = type_images_[NO_DATA].ni();
   nj_ = type_images_[NO_DATA].nj();
@@ -41,7 +41,7 @@ bool bpgl_surface_type::load_surface_types(std::string const& directory) {
 
 bool bpgl_surface_type::save_surface_types(std::string const& directory) {
   if (!vul_file::is_directory(directory)) {
-    std::string message = "category directory not accessable" + directory;
+    std::string message = "type data directory not accessable" + directory;
     std::cout << message << std::endl;
     return false;
   }
@@ -53,13 +53,13 @@ bool bpgl_surface_type::save_surface_types(std::string const& directory) {
       return false;
     }
   }
-  std::string source_path = directory + "/source.txt";
-  std::ofstream ostr(source_path.c_str());
+  std::string domain_path = directory + "/domain.txt";
+  std::ofstream ostr(domain_path.c_str());
   if (!ostr) {
-    std::cout << "Can't write to " << source_path << std::endl;
+    std::cout << "Can't write to " << domain_path << std::endl;
     return false;
   }
-  ostr << source_to_string(source_) << std::endl;
+  ostr << domain_to_string(domain_) << std::endl;
   ostr.close();
   return true;
 }
@@ -103,3 +103,4 @@ bool bpgl_surface_type::apply(vil_image_view<float> const& prob, stype type)
     }
   return true;
 }
+

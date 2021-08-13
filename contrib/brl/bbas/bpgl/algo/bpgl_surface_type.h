@@ -19,25 +19,26 @@
 #include <limits>
 #include <string>
 #include <vil/vil_image_view.h>
+#include <stdexcept>
 class bpgl_surface_type
 {
  public:
-  enum stype { NO_DATA, INVALID_DATA, SHADOW, SHADOW_STEP, NO_SURFACE_TYPE};
-  enum source { RECTIFIED_TARGET, DSM, NO_SOURCE};
+  enum stype { NO_DATA, INVALID_DATA, SHADOW, SHADOW_STEP, GEOMETRIC_CONSISTENCY, NO_SURFACE_TYPE};
+  enum domain { RECTIFIED_TARGET, DSM, NO_DOMAIN};
 
  bpgl_surface_type():ni_(0), nj_(0){init_type_names();}
 
- bpgl_surface_type(source s, size_t ni, size_t nj):source_(s), ni_(ni), nj_(nj){init_type_names(); init_type_images();}
+ bpgl_surface_type(domain s, size_t ni, size_t nj):domain_(s), ni_(ni), nj_(nj){init_type_names(); init_type_images();}
 
   //: from list of surface_type images
- bpgl_surface_type(source const s, std::map<stype, vil_image_view<float> > const& type_images): source_(s), type_images_(type_images){init_type_names();
+ bpgl_surface_type(domain const s, std::map<stype, vil_image_view<float> > const& type_images): domain_(s), type_images_(type_images){init_type_names();
     ni_ = type_images_[NO_DATA].ni();nj_ = type_images_[NO_DATA].nj();}
 
   //:load from tif files
  bpgl_surface_type(std::string const& directory) { this->load_surface_types(directory); }
 
  //: set size and intialize
- void set_size(source const s, size_t ni, size_t nj) { source_ = s; ni_ = ni; nj_ = nj; init_type_images(); }
+ void set_size(domain const s, size_t ni, size_t nj) { domain_ = s; ni_ = ni; nj_ = nj; init_type_images(); }
    
  //: set type image layer
  bool set_type_image(stype type, vil_image_view<float> const& type_image){
@@ -46,15 +47,19 @@ class bpgl_surface_type
    type_images_[type] = type_image;
    return true;
  }
+
  //: get type probability (set as well)
- float& p(size_t i, size_t j, stype type) { return type_images_[type](i, j);}
+ float& p(size_t i, size_t j, stype type) { 
+     if (type_images_.count(type) == 0||i>=ni_||j>=nj_)
+         auto error = std::runtime_error("invalid type or i, j out of bounds");
+     return type_images_[type](i, j);}
 
  //: const probability accessor
  float const_p(size_t i, size_t j, stype type) const {
-     auto it = type_images_.find(type);
-     if (it == type_images_.end())
-         return 0.0f;
-   return it->second(i, j);
+     if (type_images_.count(type) == 0 || i >= ni_ || j >= nj_)
+        auto error =  std::runtime_error("invalid type or i, j out of bounds");
+     std::map<stype, vil_image_view<float> >::const_iterator it = type_images_.find(type);
+     return it->second(i, j);
  }
 
  //: apply a bool image to set probabilites to 1.0f == true, 0.0f == false
@@ -63,7 +68,26 @@ class bpgl_surface_type
  //: apply a probability image to set probabilites 
  bool apply(vil_image_view<float> const & prob, stype type);
  
-
+ //: apply a source image with a threshold to set p = 1.0f or 0.0f
+ template <class T>
+   bool apply(vil_image_view<T> const& source, T thresh, stype type){
+   size_t ni = source.ni(), nj = source.nj();
+   if(ni != ni_ || nj != nj_){
+     std::cout << "mismatch in source image size " << ni << ' ' << nj << std::endl;
+     return false;
+   }
+   vil_image_view<bool> temp(ni, nj);
+   temp.fill(false);
+   for(size_t j = 0; j<nj; ++j)
+     for(size_t i = 0; i<ni; ++i){
+       if(p(i, j, INVALID_DATA)>0.0f)
+         continue;
+       T v = source(i, j);
+       temp(i,j) = (v<=thresh);
+     }
+   return apply(temp, type);
+   return true;
+ }
  //: map string to surface_type index
  stype type_from_string(std::string const& type_string) {
     for(std::map<stype, std::string>::iterator cit = type_names_.begin();
@@ -76,17 +100,17 @@ class bpgl_surface_type
   //: map surface_type index to string
   std::string type_to_string(stype const& type){return type_names_[type];}
 
-  source source_from_string(std::string const& source_str) {
-    if (source_str == "rectified_target") return RECTIFIED_TARGET;
-    else if (source_str == "DSM") return DSM;
-    return NO_SOURCE;
+  domain domain_from_string(std::string const& domain_str) {
+    if (domain_str == "rectified_target") return RECTIFIED_TARGET;
+    else if (domain_str == "DSM") return DSM;
+    return NO_DOMAIN;
   }
-  std::string source_to_string(source const& src) {
+  std::string domain_to_string(domain const& src) {
     if (src == RECTIFIED_TARGET)
       return "rectified_target";
     else if (src == DSM)
       return "DSM";
-    return "no_source";
+    return "no_domain";
   }
   bool load_surface_types(std::string const& path);
 
@@ -95,21 +119,54 @@ class bpgl_surface_type
   //: accessors
   size_t ni() const {return ni_;}
   size_t nj() const {return nj_;}
-  source source_id() const {return source_;}
+  domain domain_id() const {return domain_;}
 
-  std::vector<std::string> defined_types() const{
-    std::vector<std::string> ret;
-    for(std::map<stype, std::string>::const_iterator nit = type_names_.begin();
-        nit != type_names_.end(); nit++) ret.push_back(nit->second);
-    return ret;
+  
+  bool type_image(std::string const& type_name, vil_image_view<float>& type_image ){
+    return type_image(type_from_string(type_name), type_image);
   }
-  vil_image_view<float>& type_image(std::string const& type_name){
-    return type_images_[type_from_string(type_name)];
+  const bool type_image(stype type, vil_image_view<float>& type_image) const{
+    //map [] operator is non_const so need the implementation below
+    std::map<stype, vil_image_view<float> >::const_iterator it = type_images_.find(type);
+    if (it == type_images_.end())
+      false; 
+    type_image = it->second;
+    return true;
   }
-  vil_image_view<float>& type_image(stype type){
-    return type_images_[type];
+  //: the available types
+  std::vector<bpgl_surface_type::stype>& stypes()  { return types_; }
+
+  std::vector<std::string> string_types() const {
+      std::vector<std::string> ret;
+      for (std::map<stype, std::string>::const_iterator nit = type_names_.begin();
+          nit != type_names_.end(); nit++) ret.push_back(nit->second);
+      return ret;
   }
- std::vector<bpgl_surface_type::stype>& stypes()  { return types_; }
+
+  //: display methods
+  // display a type channel on the source image
+  template <class T> 
+    bool color_type_display(stype type, vil_image_view<T> const& source, vil_image_view<float>& color_img) const{
+    size_t ni = source.ni(), nj = source.nj();
+    if(ni != ni_ || nj != nj_){
+      std::cout << "mismatch in source image size " << ni << ' ' << nj << std::endl;
+      return false;
+    }
+    vil_image_view<float> t;
+    if (!type_image(type, t))
+        return false;
+    color_img.set_size(ni_, nj_, 3);
+    for (size_t j = 0; j < nj_; ++j)
+      for (size_t i = 0; i < ni_; ++i)
+        {
+          float p = t(i, j);
+          T v = source(i, j);
+          color_img(i, j, 0) = float(v) /(1 - p);
+          color_img(i, j, 1) = float(v);
+          color_img(i, j, 1) = float(v);
+        }
+    return true;
+  }
  private:
   // internal methods
   void init_type_names(){
@@ -117,6 +174,7 @@ class bpgl_surface_type
     type_names_[INVALID_DATA] = "invalid_data"; types_.push_back(INVALID_DATA);
     type_names_[SHADOW] = "shadow";             types_.push_back(SHADOW);
     type_names_[SHADOW_STEP] = "shadow_step";   types_.push_back(SHADOW_STEP);
+    type_names_[GEOMETRIC_CONSISTENCY] = "geometric_consistency";   types_.push_back(GEOMETRIC_CONSISTENCY);
   }
   void init_type_images(){
     for(std::map<stype, std::string>::iterator nit = type_names_.begin();
@@ -126,7 +184,7 @@ class bpgl_surface_type
     }
   }
   // members
-  source source_; 
+  domain domain_; 
   size_t ni_;
   size_t nj_;
   std::vector<stype> types_;

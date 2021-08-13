@@ -627,8 +627,8 @@ bool bsgm_disparity_estimator::compute(
   // Find and fix errors if configured.
   if (!skip_error_check) {
 
-    bsgm_check_shadows<T>(disp_tar, img_tar, invalid_disp,
-                          params_.shadow_thresh, target_window);
+    //bsgm_check_shadows<T>(disp_tar, img_tar, invalid_disp,
+    //                    params_.shadow_thresh, target_window);
 
     if ( params_.error_check_mode > 0) {
       bsgm_check_nonunique<T>( disp_tar, disp_cost,

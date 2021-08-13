@@ -349,6 +349,9 @@ class bsgm_prob_pairwise_dsm
 
   const bpgl_surface_type & rect_target_stype() const  { return rect_space_target_; }
   const bpgl_surface_type & dsm_grid_stype() const { return dsm_grid_space_; }
+  bool save_dsm_grid_stype(std::string const& stype_dir){
+    return dsm_grid_space_.save_surface_types(stype_dir);
+  }
   
   // PROCESS-----
 
@@ -393,20 +396,16 @@ class bsgm_prob_pairwise_dsm
     }
     // rectification
     this->rectify();
-
     // shadow weighted dynamic program
     // and other context uses
     this->set_shadow_context_data();
-
     // compute forward disparity & height
     this->compute_disparity_fwd();
     this->compute_height_fwd(compute_fwd_rev_ptsets_hmaps);
-
     // consistency check & probabilistic analysis
     if (with_consistency_check) {
       this->compute_disparity_rev();
       this->compute_height_rev(compute_fwd_rev_ptsets_hmaps);
-
       if (knn_consistency) {
         if (!compute_prob(true))  // true -> compute prob heightmap
           return false;
@@ -414,7 +413,6 @@ class bsgm_prob_pairwise_dsm
         this->compute_xyz_prob(true);  // true -> compute prob heightmap
       }
     } else this->compute_ptset();
-
     this->display_sun_dir_rect_bviews();
     return true;
   }
@@ -545,6 +543,8 @@ class bsgm_prob_pairwise_dsm
   // define surface type probability layers
   bpgl_surface_type rect_space_target_;
   bpgl_surface_type dsm_grid_space_;
+  // associate target_image pix_ij to triangulated 3-d pointset index
+  std::map<size_t, std::pair<size_t, size_t> > pt_index_to_pix_;
 
   bool affine_;  // vs. perspective
   pairwise_params params_;

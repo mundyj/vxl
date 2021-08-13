@@ -277,31 +277,12 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::compute_disparity_fwd()
   //apply invalid map to surface_types
   rect_space_target_ = bpgl_surface_type(bpgl_surface_type::RECTIFIED_TARGET, rect_bview0_.ni(), rect_bview1_.nj());
   rect_space_target_.apply(invalid_map_fwd_, bpgl_surface_type::INVALID_DATA);
-
   // apply shadow profile mask to surface_types
   vil_image_view<float> shadow_step;
-   std::cout << "SUN DIR 0 " << sun_dir_0_ << std::endl;
-   bsgm_shadow_step_filter<PIX_T>(rect_bview0_, invalid_map_fwd_, shadow_step, sun_dir_0_, params_.shadow_profile_radius_, params_.response_low_,params_.shadow_high_);
-  std::string step_debug_path = "D:/tests/BuckleyAFB/results_7_15_2021/target_rect_space_stype/debug_step_mask.tif";
-  vil_save(shadow_step, step_debug_path.c_str());
-  std::string color_step_debug_path = "D:/tests/BuckleyAFB/results_7_15_2021/target_rect_space_stype/color_step_mask.tif";
-  vil_image_view<float> color_step(rect_bview0_.ni(), rect_bview0_.nj(), 3);
-  
-  for (size_t j = 0; j < rect_bview0_.nj(); ++j)
-      for (size_t i = 0; i < rect_bview0_.ni(); ++i)
-      {
-        float p = shadow_step(i, j);
-        float v = rect_bview0_(i, j);
-        float r = v /(1 - p);
-        float g = v;
-        float b = v;
-        color_step(i, j, 0) = r;
-        color_step(i, j, 1) = g;
-        color_step(i, j, 1) = b;
-    }
-  
-  vil_save(color_step, color_step_debug_path.c_str());
+  bsgm_shadow_step_filter<PIX_T>(rect_bview0_, invalid_map_fwd_, shadow_step, sun_dir_0_, params_.shadow_profile_radius_, params_.response_low_,params_.shadow_high_);
   rect_space_target_.apply(shadow_step, bpgl_surface_type::SHADOW_STEP);
+  PIX_T sthresh = static_cast<PIX_T>(params_.shadow_thresh_);
+  rect_space_target_.apply(rect_bview0_, sthresh, bpgl_surface_type::SHADOW);
 #endif
 }
 
@@ -387,16 +368,12 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::compute_height_fwd(bool compute_hmap)
   }
 
   if (compute_hmap){
-    std::map<size_t, std::pair<size_t, size_t> > pt_index_to_pix;
     this->compute_height(rect_cam0_window, rect_cam1_window, disparity_fwd_,
-                         tri_3d_fwd_, ptset_fwd_, heightmap_fwd_, pt_index_to_pix);
+                         tri_3d_fwd_, ptset_fwd_, heightmap_fwd_, pt_index_to_pix_);
 #if 1
-    std::string path = "D:/tests/BuckleyAFB/results_7_15_2021/target_rect_space_stype/ptset_from_tri.txt";
-    std::ofstream ostr(path.c_str());
-    ostr << ptset_fwd_;
     dsm_grid_space_.set_size(bpgl_surface_type::DSM, heightmap_fwd_.ni(), heightmap_fwd_.nj());
     auto bh = this->get_bpgl_heightmap();
-    bh.surface_type_from_pointset(ptset_fwd_, rect_space_target_,pt_index_to_pix, dsm_grid_space_);
+    bh.surface_type_from_pointset(ptset_fwd_, rect_space_target_,pt_index_to_pix_, dsm_grid_space_);
 #endif
       }else{
     tri_3d_fwd_ = bpgl_3d_from_disparity(rect_cam0_window, rect_cam1_window,
@@ -475,6 +452,13 @@ bool bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::compute_prob(bool compute_prob_height
     float prob = p_mul * exp(-d*d/sdsq);
     prob_distr_.upcount(prob, 1.0);
     prob_ptset_.add_point_with_scalar(p, prob);
+#if 1
+    std::pair<size_t, size_t>& pr = pt_index_to_pix_[i];
+    size_t ii = pr.first, jj = pr.second;
+    if(ii>=rect_space_target_.ni() || jj >= rect_space_target_.nj())
+      continue;
+    rect_space_target_.p(ii, jj, bpgl_surface_type::GEOMETRIC_CONSISTENCY)=prob;
+#endif
   }
 
   // check size
@@ -489,6 +473,9 @@ bool bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::compute_prob(bool compute_prob_height
     //bh.heightmap_from_pointset(prob_ptset_, prob_heightmap_z_, prob_heightmap_prob_);
     bh.heightmap_from_pointset(prob_ptset_, prob_heightmap_z_,
                                prob_heightmap_prob_, radial_std_dev_image_);
+#if 1
+    dsm_grid_space_.apply(prob_heightmap_prob_, bpgl_surface_type::GEOMETRIC_CONSISTENCY);
+#endif
   }
   return true;
 }
