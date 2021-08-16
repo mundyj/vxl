@@ -142,7 +142,6 @@ bsgm_shadow_step_filter(const vil_image_view<T> & img,
                         int response_low,
                         int shadow_high)
 {
-  std::cout << "start shadow_step filter " << sun_dir << std::endl;
   int sum_coef;
   std::vector<std::tuple<int, int, int>> deriv_pix_offset = step_filter(radius, sun_dir, sum_coef);
   int ni = img.ni(), nj = img.nj(), ns = deriv_pix_offset.size();

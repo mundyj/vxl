@@ -20,11 +20,15 @@
 #include <string>
 #include <vil/vil_image_view.h>
 #include <stdexcept>
+// an overlay image with colors indicating dsm height and highlighed colors for shadow and shadow_step
+bool write_dsm_color_display(std::string const& dsm_path, std::string const& surface_type_path, std::string const& display_path,
+                             float shadow_prob_cutoff = 0.5f, float shadow_step_prob_cutoff = 0.5f);
+  
 class bpgl_surface_type
 {
  public:
   enum stype { NO_DATA, INVALID_DATA, SHADOW, SHADOW_STEP, GEOMETRIC_CONSISTENCY, NO_SURFACE_TYPE};
-  enum domain { RECTIFIED_TARGET, DSM, NO_DOMAIN};
+  enum domain { RECTIFIED_TARGET, DSM, FUSED_DSM, MOSAIC_DSM, NO_DOMAIN};
 
  bpgl_surface_type():ni_(0), nj_(0){init_type_names();}
 
@@ -35,7 +39,7 @@ class bpgl_surface_type
     ni_ = type_images_[NO_DATA].ni();nj_ = type_images_[NO_DATA].nj();}
 
   //:load from tif files
- bpgl_surface_type(std::string const& directory) { this->load_surface_types(directory); }
+ bpgl_surface_type(std::string const& directory) { init_type_names(); this->read(directory); }
 
  //: set size and intialize
  void set_size(domain const s, size_t ni, size_t nj) { domain_ = s; ni_ = ni; nj_ = nj; init_type_images(); }
@@ -90,12 +94,13 @@ class bpgl_surface_type
  }
  //: map string to surface_type index
  stype type_from_string(std::string const& type_string) {
-    for(std::map<stype, std::string>::iterator cit = type_names_.begin();
+   for(std::map<stype, std::string>::iterator cit = type_names_.begin();
         cit != type_names_.end(); ++cit){
-      if(cit->second == type_string)
-        return cit->first;
+     if(cit->second == type_string){
+       return cit->first;
     }
-    return NO_SURFACE_TYPE;
+   }
+   return NO_SURFACE_TYPE;
  }
   //: map surface_type index to string
   std::string type_to_string(stype const& type){return type_names_[type];}
@@ -103,18 +108,24 @@ class bpgl_surface_type
   domain domain_from_string(std::string const& domain_str) {
     if (domain_str == "rectified_target") return RECTIFIED_TARGET;
     else if (domain_str == "DSM") return DSM;
+    else if (domain_str == "fused_DSM") return FUSED_DSM;
+    else if (domain_str == "mosaic_DSM") return MOSAIC_DSM;
     return NO_DOMAIN;
   }
-  std::string domain_to_string(domain const& src) {
-    if (src == RECTIFIED_TARGET)
+  std::string domain_to_string(domain const& dom) const{
+    if (dom == RECTIFIED_TARGET)
       return "rectified_target";
-    else if (src == DSM)
+    else if (dom == DSM)
       return "DSM";
+    else if (dom == FUSED_DSM)
+      return "fused_DSM";
+    else if (dom == MOSAIC_DSM)
+      return "mosaic_DSM";
     return "no_domain";
   }
-  bool load_surface_types(std::string const& path);
+  bool read(std::string const& path);
 
-  bool save_surface_types(std::string const& path);
+  bool write(std::string const& path);
 
   //: accessors
   size_t ni() const {return ni_;}
@@ -125,7 +136,7 @@ class bpgl_surface_type
   bool type_image(std::string const& type_name, vil_image_view<float>& type_image ){
     return type_image(type_from_string(type_name), type_image);
   }
-  const bool type_image(stype type, vil_image_view<float>& type_image) const{
+  bool type_image(stype type, vil_image_view<float>& type_image) const{
     //map [] operator is non_const so need the implementation below
     std::map<stype, vil_image_view<float> >::const_iterator it = type_images_.find(type);
     if (it == type_images_.end())
@@ -146,7 +157,11 @@ class bpgl_surface_type
   //: display methods
   // display a type channel on the source image
   template <class T> 
-    bool color_type_display(stype type, vil_image_view<T> const& source, vil_image_view<float>& color_img) const{
+    bool color_type_display(domain d, stype type, vil_image_view<T> const& source, vil_image_view<float>& color_img) const{
+    if(d != this->domain_){
+      std::cout << "incorrect domain " << domain_to_string(d) << " vs. " << domain_to_string(this->domain_) << std::endl;
+      return false;
+    }
     size_t ni = source.ni(), nj = source.nj();
     if(ni != ni_ || nj != nj_){
       std::cout << "mismatch in source image size " << ni << ' ' << nj << std::endl;
@@ -167,6 +182,8 @@ class bpgl_surface_type
         }
     return true;
   }
+  // displays shadow and shadow step on elevation colored fused dsm
+  bool dsm_color_display(vil_image_view<float> const& dsm, vil_image_view<vxl_byte>& display) const;
  private:
   // internal methods
   void init_type_names(){
@@ -175,6 +192,7 @@ class bpgl_surface_type
     type_names_[SHADOW] = "shadow";             types_.push_back(SHADOW);
     type_names_[SHADOW_STEP] = "shadow_step";   types_.push_back(SHADOW_STEP);
     type_names_[GEOMETRIC_CONSISTENCY] = "geometric_consistency";   types_.push_back(GEOMETRIC_CONSISTENCY);
+    type_names_[NO_SURFACE_TYPE] = "no surface type";
   }
   void init_type_images(){
     for(std::map<stype, std::string>::iterator nit = type_names_.begin();
