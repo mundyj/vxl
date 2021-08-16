@@ -350,7 +350,7 @@ class bsgm_prob_pairwise_dsm
   const bpgl_surface_type & rect_target_stype() const  { return rect_space_target_; }
   const bpgl_surface_type & dsm_grid_stype() const { return dsm_grid_space_; }
   bool save_dsm_grid_stype(std::string const& stype_dir){
-    return dsm_grid_space_.save_surface_types(stype_dir);
+    return dsm_grid_space_.write(stype_dir);
   }
   
   // PROCESS-----
