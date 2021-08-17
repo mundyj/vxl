@@ -22,7 +22,11 @@
 #include <stdexcept>
 // an overlay image with colors indicating dsm height and highlighed colors for shadow and shadow_step
 bool write_dsm_color_display(std::string const& dsm_path, std::string const& surface_type_path, std::string const& display_path,
+<<<<<<< HEAD
                              float shadow_prob_cutoff = 0.25f, float shadow_step_prob_cutoff = 0.25f);
+=======
+                             float shadow_prob_cutoff = 0.5f, float shadow_step_prob_cutoff = 0.5f);
+>>>>>>> f3f7409f329fb5c3c2ed453922f4fdba66ecafd6
   
 class bpgl_surface_type
 {
