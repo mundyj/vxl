@@ -147,11 +147,6 @@ bool bpgl_surface_type::dsm_color_display(vil_image_view<float> const& dsm, vil_
         display(i, j, c) = bvrml_custom_color::heatmap_custom[cind][c];
     }
   // apply shadow and shadow step color
-<<<<<<< HEAD
-=======
-  float shadow_max_val;
-  float shadow_step_max_val;
->>>>>>> f3f7409f329fb5c3c2ed453922f4fdba66ecafd6
    vil_image_view<float> shadow;
    vil_image_view<float> shadow_step;
   if(!type_image(SHADOW, shadow))
@@ -163,12 +158,7 @@ bool bpgl_surface_type::dsm_color_display(vil_image_view<float> const& dsm, vil_
       float rd = static_cast<float>(display(i,j,0)), gd = static_cast<float>(display(i,j,1)), bd = static_cast<float>(display(i,j,2));
       // write shadow type pixels first
       float s = shadow(i,j);
-<<<<<<< HEAD
       if(s>shadow_prob_cutoff){
-=======
-      if(s>0.5f){
-        float v = s/shadow_max_val;
->>>>>>> f3f7409f329fb5c3c2ed453922f4fdba66ecafd6
         //black color
         display(i,j,0) = static_cast<vxl_byte>(0.0f);
         display(i,j,1) = static_cast<vxl_byte>(0.0f);
@@ -176,12 +166,7 @@ bool bpgl_surface_type::dsm_color_display(vil_image_view<float> const& dsm, vil_
       }
       //possibly overwrite with shadow step type
       float ss = shadow_step(i,j);
-<<<<<<< HEAD
       if(ss > shadow_step_prob_cutoff){
-=======
-      if(ss > 0.5f){
-        float v = ss/shadow_step_max_val;
->>>>>>> f3f7409f329fb5c3c2ed453922f4fdba66ecafd6
         // violet color
         display(i,j,0) = static_cast<vxl_byte>(190.0f);
         display(i,j,1) = static_cast<vxl_byte>(0.0f);
@@ -205,11 +190,7 @@ bool write_dsm_color_display(std::string const& dsm_path, std::string const& sur
     return false;
   }
   vil_image_view<vxl_byte> display;
-<<<<<<< HEAD
   if(!st.dsm_color_display(dsm, display, shadow_prob_cutoff, shadow_step_prob_cutoff)){
-=======
-  if(!st.dsm_color_display(dsm, display)){
->>>>>>> f3f7409f329fb5c3c2ed453922f4fdba66ecafd6
     std::cout << "create display failed" << std::endl;
     return false;
   }
