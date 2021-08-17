@@ -111,7 +111,8 @@ bool bpgl_surface_type::apply(vil_image_view<float> const& prob, stype type)
   return true;
 }
 
-bool bpgl_surface_type::dsm_color_display(vil_image_view<float> const& dsm, vil_image_view<unsigned char>& display) const{
+bool bpgl_surface_type::dsm_color_display(vil_image_view<float> const& dsm, vil_image_view<unsigned char>& display,
+                                          float shadow_prob_cutoff, float shadow_step_prob_cutoff) const{
   if(this->domain_!= DSM && this->domain_ != FUSED_DSM && this->domain_ != MOSAIC_DSM){
     std::cout << "only applies to a DSM surface type" << std::endl;
     return false;
@@ -145,8 +146,6 @@ bool bpgl_surface_type::dsm_color_display(vil_image_view<float> const& dsm, vil_
         display(i, j, c) = bvrml_custom_color::heatmap_custom[cind][c];
     }
   // apply shadow and shadow step color
-  float shadow_max_val;
-  float shadow_step_max_val;
    vil_image_view<float> shadow;
    vil_image_view<float> shadow_step;
   if(!type_image(SHADOW, shadow))
@@ -158,8 +157,7 @@ bool bpgl_surface_type::dsm_color_display(vil_image_view<float> const& dsm, vil_
       float rd = static_cast<float>(display(i,j,0)), gd = static_cast<float>(display(i,j,1)), bd = static_cast<float>(display(i,j,2));
       // write shadow type pixels first
       float s = shadow(i,j);
-      if(s>0.5f){
-        float v = s/shadow_max_val;
+      if(s>shadow_prob_cutoff){
         //black color
         display(i,j,0) = static_cast<vxl_byte>(0.0f);
         display(i,j,1) = static_cast<vxl_byte>(0.0f);
@@ -167,8 +165,7 @@ bool bpgl_surface_type::dsm_color_display(vil_image_view<float> const& dsm, vil_
       }
       //possibly overwrite with shadow step type
       float ss = shadow_step(i,j);
-      if(ss > 0.5f){
-        float v = ss/shadow_step_max_val;
+      if(ss > shadow_step_prob_cutoff){
         // violet color
         display(i,j,0) = static_cast<vxl_byte>(190.0f);
         display(i,j,1) = static_cast<vxl_byte>(0.0f);
@@ -192,7 +189,7 @@ bool write_dsm_color_display(std::string const& dsm_path, std::string const& sur
     return false;
   }
   vil_image_view<vxl_byte> display;
-  if(!st.dsm_color_display(dsm, display)){
+  if(!st.dsm_color_display(dsm, display, shadow_prob_cutoff, shadow_step_prob_cutoff)){
     std::cout << "create display failed" << std::endl;
     return false;
   }

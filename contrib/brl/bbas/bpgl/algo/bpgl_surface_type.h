@@ -22,7 +22,7 @@
 #include <stdexcept>
 // an overlay image with colors indicating dsm height and highlighed colors for shadow and shadow_step
 bool write_dsm_color_display(std::string const& dsm_path, std::string const& surface_type_path, std::string const& display_path,
-                             float shadow_prob_cutoff = 0.5f, float shadow_step_prob_cutoff = 0.5f);
+                             float shadow_prob_cutoff = 0.25f, float shadow_step_prob_cutoff = 0.25f);
   
 class bpgl_surface_type
 {
@@ -183,7 +183,8 @@ class bpgl_surface_type
     return true;
   }
   // displays shadow and shadow step on elevation colored fused dsm
-  bool dsm_color_display(vil_image_view<float> const& dsm, vil_image_view<vxl_byte>& display) const;
+  bool dsm_color_display(vil_image_view<float> const& dsm, vil_image_view<vxl_byte>& display,
+                         float shadow_prob_cutoff, float shadow_step_prob_cutoff) const;
  private:
   // internal methods
   void init_type_names(){
