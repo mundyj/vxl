@@ -163,7 +163,7 @@ bsgm_shadow_step_filter(const vil_image_view<T> & img,
     {
       bool any_invalid = false;
       float resp = 0;
-      T vmin = 2048; // max 11 bits + 1
+      T vmin = std::numeric_limits<T>::max();
       bool print = (i == 1128 && j == 211);
       for (int k = 0; (k < ns) && !any_invalid; ++k)
       {

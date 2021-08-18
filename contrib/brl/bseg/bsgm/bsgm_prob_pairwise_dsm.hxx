@@ -306,17 +306,16 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::compute_disparity_rev()
 // compute height (tri_3d, ptset, heightmap)
 template <class CAM_T, class PIX_T>
 void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::compute_height(const CAM_T& cam, const CAM_T& cam_reference,
-                                                   const vil_image_view<float>& disparity,
-                                                   vil_image_view<float>& tri_3d, vgl_pointset_3d<float>& ptset,
-                                                   vil_image_view<float>& heightmap,
-                                                   std::map<size_t, std::pair<size_t, size_t> >& pt_index_to_pix)
+                                                          const vil_image_view<float>& disparity,
+                                                          vil_image_view<float>& tri_3d, vgl_pointset_3d<float>& ptset,
+                                                          vil_image_view<float>& heightmap)
 {
   // triangulated image
   tri_3d = bpgl_3d_from_disparity(cam, cam_reference, disparity, params_.disparity_sense_);
   // convert triangulated image to pointset & heightmap
   auto bh = this->get_bpgl_heightmap();
   //bh.pointset_from_tri(tri_3d, ptset);
-  bh.pointset_from_tri(tri_3d, ptset, pt_index_to_pix);
+  bh.pointset_from_tri(tri_3d, ptset, pt_index_to_pix_);
   bh.heightmap_from_pointset(ptset, heightmap);
 }
 
@@ -371,7 +370,7 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::compute_height_fwd(bool compute_hmap)
 
   if (compute_hmap){
     this->compute_height(rect_cam0_window, rect_cam1_window, disparity_fwd_,
-                         tri_3d_fwd_, ptset_fwd_, heightmap_fwd_, pt_index_to_pix_);
+                         tri_3d_fwd_, ptset_fwd_, heightmap_fwd_);//initializes pt_index_to_pix_
 #if 1
     dsm_grid_space_.set_size(bpgl_surface_type::DSM, heightmap_fwd_.ni(), heightmap_fwd_.nj());
     auto bh = this->get_bpgl_heightmap();

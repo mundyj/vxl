@@ -506,8 +506,8 @@ class bsgm_prob_pairwise_dsm
     const vil_image_view<float>& disparity,
     vil_image_view<float>& tri_3d,
     vgl_pointset_3d<float>& ptset,
-    vil_image_view<float>& heightmap,
-    std::map<size_t, std::pair<size_t, size_t> >& pt_index_to_pix = std::map<size_t, std::pair<size_t, size_t> >());
+    vil_image_view<float>& heightmap);
+  
 
   // display sun dir 
   void display_sun_dir_rect_bviews();
@@ -543,6 +543,7 @@ class bsgm_prob_pairwise_dsm
   // define surface type probability layers
   bpgl_surface_type rect_space_target_;
   bpgl_surface_type dsm_grid_space_;
+
   // associate target_image pix_ij to triangulated 3-d pointset index
   std::map<size_t, std::pair<size_t, size_t> > pt_index_to_pix_;
 
