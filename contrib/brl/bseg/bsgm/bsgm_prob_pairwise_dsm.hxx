@@ -215,9 +215,17 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::compute_disparity(
 
   bsgm_compute_invalid_map<PIX_T>(img, img_reference, invalid, min_disparity_,
                                   num_disparities(), border_val, img_window);
+
+  //assign sun direction according to forward or reverse 
+  vgl_vector_2d<float> sun_dir_tar, sun_dir_ref;
+  if (forward)
+    sun_dir_tar = sun_dir_0_;
+  else
+    sun_dir_tar = sun_dir_1_;
+
   if (params_.coarse_dsm_disparity_estimate_) {
     bsgm_multiscale_disparity_estimator mde(params_.de_params_, rect_ni_, rect_nj_,
-                                            num_disparities(), num_active_disparities());
+                                            num_disparities(), num_active_disparities(), sun_dir_tar);
 
     good = mde.compute(img, img_reference, invalid,
                        min_disparity_, invalid_disp, params_.multi_scale_mode_,
@@ -244,12 +252,6 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::compute_disparity(
     else  // reverse img = img1, ref = img0
       min_disparity.fill(-(num_disparities() + min_disparity_));
 
-    //assign sun direction according to forward or reverse 
-    vgl_vector_2d<float> sun_dir_tar, sun_dir_ref;
-    if (forward)
-      sun_dir_tar = sun_dir_0_;
-    else
-      sun_dir_tar = sun_dir_1_;
 
     
     bsgm_disparity_estimator bsgm(params_.de_params_, cost_volume_width,

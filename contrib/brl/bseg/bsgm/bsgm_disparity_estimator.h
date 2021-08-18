@@ -74,7 +74,6 @@ struct bsgm_disparity_estimator_params
   // 0 to disable biasing. 
   float bias_weight;
 
-  bool remove_shadow_overhang;
 
   //: Appearance costs computed by different algorithms are statically fused
   // using these weights. Set any to <= 0 to prevent computation.
@@ -107,8 +106,8 @@ struct bsgm_disparity_estimator_params
     xgrad_weight(0.7f),
     census_tol(2),
     census_rad(2),
-    print_timing(false),
-    remove_shadow_overhang(false){}
+    print_timing(false)
+    {}
 
 };
 
@@ -627,9 +626,12 @@ bool bsgm_disparity_estimator::compute(
   // Find and fix errors if configured.
   if (!skip_error_check) {
 
-    //bsgm_check_shadows<T>(disp_tar, img_tar, invalid_disp,
-    //                    params_.shadow_thresh, target_window);
-
+    if(sun_dir_tar_.length()==0.0){
+      bsgm_check_shadows<T>(disp_tar, img_tar, invalid_disp,
+                            params_.shadow_thresh, target_window);
+    }
+      
+    
     if ( params_.error_check_mode > 0) {
       bsgm_check_nonunique<T>( disp_tar, disp_cost,
         img_tar, invalid_disp, params_.shadow_thresh, 1, target_window);
