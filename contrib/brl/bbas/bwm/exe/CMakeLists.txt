@@ -39,8 +39,8 @@ if(EXPAT_FOUND)
    add_executable( bwm_triangulate_2d_corrs  bwm_triangulate_2d_corrs.cxx)
    target_link_libraries( bwm_triangulate_2d_corrs bwm bwm_algo ${VXL_LIB_PREFIX}vpgl ${VXL_LIB_PREFIX}vgl_algo ${VXL_LIB_PREFIX}vnl_algo ${VXL_LIB_PREFIX}vgl ${VXL_LIB_PREFIX}vnl ${VXL_LIB_PREFIX}vul ${VXL_LIB_PREFIX}vidl ${VXL_LIB_PREFIX}vcl bxml)
 
-   add_executable( bwm_test_TFT  bwm_test_TFT_constraints.cxx)
-   target_link_libraries( bwm_test_TFT bwm bwm_algo ${VXL_LIB_PREFIX}vpgl ${VXL_LIB_PREFIX}vgl_algo ${VXL_LIB_PREFIX}vnl_algo ${VXL_LIB_PREFIX}vgl ${VXL_LIB_PREFIX}vnl ${VXL_LIB_PREFIX}vul ${VXL_LIB_PREFIX}vidl ${VXL_LIB_PREFIX}vcl bxml ipts mvl)
+  # add_executable( bwm_test_TFT  bwm_test_TFT_constraints.cxx)
+  # target_link_libraries( bwm_test_TFT bwm bwm_algo ${VXL_LIB_PREFIX}vpgl ${VXL_LIB_PREFIX}vgl_algo ${VXL_LIB_PREFIX}vnl_algo ${VXL_LIB_PREFIX}vgl ${VXL_LIB_PREFIX}vnl ${VXL_LIB_PREFIX}vul ${VXL_LIB_PREFIX}vidl ${VXL_LIB_PREFIX}vcl bxml ipts mvl)
 
    add_executable( bwm_3d_fixed_transform  bwm_3d_fixed_transform.cxx)
    target_link_libraries( bwm_3d_fixed_transform bwm bwm_algo ${VXL_LIB_PREFIX}vpgl ${VXL_LIB_PREFIX}vgl_algo ${VXL_LIB_PREFIX}vnl_algo ${VXL_LIB_PREFIX}vgl ${VXL_LIB_PREFIX}vnl ${VXL_LIB_PREFIX}vul ${VXL_LIB_PREFIX}vidl ${VXL_LIB_PREFIX}vcl bxml)
