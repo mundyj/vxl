@@ -79,7 +79,7 @@ test_affine_fm_compute()
   fmm = fm.get_matrix();
   if (fmm[2][2] < 0.0) fmm *= -1.0;
   std::cout << "Test F \n" << fm.get_matrix() << std::endl;
-  TEST_NEAR("affine fm robust ransac from perfect correspondences", (fmm - mf).frobenius_norm(), 0, 1);
+  TEST_NEAR("affine fm robust ransac from min number of correspondences", (fmm - mf).frobenius_norm(), 0, 1);
 }
 
 TESTMAIN(test_affine_fm_compute);

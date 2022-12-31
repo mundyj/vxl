@@ -373,7 +373,7 @@ test_compute_affine()
   std::vector<vgl_point_2d<double> > noisy_img_pts;
   std::vector<vgl_point_3d<double> > noisy_wld_pts;
   for (size_t i = 0; i < 100; ++i) {
-      if (i % 2 == 0) {//50% noisy
+      if (i % 3 == 0) {//33% noisy
           double u_noise = rand.drand32(-img_sd, img_sd);
           double v_noise = rand.drand32(-img_sd, img_sd);
           double x_noise = rand.drand32(-wld_sd, wld_sd);
