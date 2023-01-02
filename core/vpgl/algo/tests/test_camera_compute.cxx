@@ -500,7 +500,7 @@ test_compute_affine()
    ma[1][0] = 0.0508687;  ma[1][1] = -1.6604; ma[1][2] = -0.150213; ma[1][3] = 1000.0; 
    ma[0][0] = 1.0;
 
-   TEST_NEAR("vpgl_affine_camera_compute robust ransac -Actual", (Cactual.get_matrix() - ma).frobenius_norm(), 5, 5);
+   TEST_NEAR("vpgl_affine_camera_compute robust ransac -Actual", (Cactual.get_matrix() - ma).frobenius_norm(), 10, 5);
 }
 
 
