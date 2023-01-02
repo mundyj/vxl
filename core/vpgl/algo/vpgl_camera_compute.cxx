@@ -204,9 +204,11 @@ bool vpgl_affine_camera_compute::compute_robust_ransac( const std::vector< vgl_p
       std::cout << "MUSE failed!!\n";
       return false;
   }
+#ifdef CAMERA_DEBUG
   else std::cout << "MUSE succeeded.\n"
               << "estimate = " << ransam.params() << std::endl
               << "scale = " << ransam.scale() << std::endl;
+#endif
   hg.fill_camera_from_params(ransam.params());
   vpgl_affine_camera<double> CaNorm = hg.Ca();
   vnl_matrix_fixed<double, 3, 4> Mn = CaNorm.get_matrix(), Mu;
