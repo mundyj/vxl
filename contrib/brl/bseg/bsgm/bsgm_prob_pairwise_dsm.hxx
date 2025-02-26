@@ -237,7 +237,7 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::compute_min_max_disparity_from_height
   //print for search cost and memory monitoring
   std::cout << "min_disparity " << min_disparity_ << " max disparity " << max_disparity_ << std::endl;
 }
-// invalid regions outside overlap of target and ref images, including disparity range
+// invalid regions outsideo overlap of target and ref images, including disparity range
 template <class CAM_T, class PIX_T>
 void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::compute_invalid_masks(){
   vxl_byte border_val = 0;
@@ -257,15 +257,17 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::compute_disparity(
     vgl_box_2d<int>& img_window,
     vgl_box_2d<int>& img_reference_window)
 {
+  bool window_processing = !img_window.is_empty();
   vxl_byte border_val = 0;
   float invalid_disp = NAN; //required for triangulation implementation
-  vil_image_view<bool> invalid;
+  vil_image_view<bool> invalid, invalid_loc;
   bool good = true;
   float dynamic_range_factor = bits_per_pix_factors_[params_.effective_bits_per_pixel_];
 
-#if 0
-  bsgm_compute_invalid_map<PIX_T>(img, img_reference, invalid, min_disparity_,
-                                  num_disparities(), border_val, img_window);
+#if 1
+  if(window_processing)
+    bsgm_compute_invalid_map<PIX_T>(img, img_reference, invalid_loc, min_disparity_,
+                                    num_disparities(), border_val, img_window);
 #endif
   //assign sun direction according to forward or reverse
   vgl_vector_2d<float> sun_dir_tar, sun_dir_ref;
@@ -273,6 +275,8 @@ void bsgm_prob_pairwise_dsm<CAM_T, PIX_T>::compute_disparity(
   if (forward){
     sun_dir_tar = sun_dir_0_;
     invalid = invalid_map_fwd_;
+    if(window_processing)
+      invalid = invalid_loc;
     sstep = shadow_step_fwd_;
     shd = shadow_fwd_;
       }else{

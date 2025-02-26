@@ -518,6 +518,19 @@ class bsgm_prob_pairwise_dsm
       prob_ptset_.clear();
       rectify_windows();
     }
+      std::stringstream ss;
+      
+    // target image must be large enough to be indexable by the target window
+    if (target_window_.min_x() < 0 || rect_bview0_.ni() <= (unsigned)rect_target_window_.max_x() ||
+        target_window_.min_y() < 0 || rect_bview0_.nj() <= (unsigned)rect_target_window_.max_y()) {
+      std::stringstream ss;
+      ss << "rectified target window outside rectified target image extents " << rect_bview0_.ni() << ' '
+         << rect_bview0_.nj() << ' ' << rect_target_window_.min_x() << ' '
+         << target_window_.max_x() << ' ' << rect_target_window_.min_y() << ' '
+         << target_window_.max_y() << std::endl;
+      std::cout<< ss.str() << std::endl;
+        return false;
+    }
     // compute forward disparity & height
     this->compute_disparity_fwd();
     this->compute_height_fwd(false);  // false -> don't compute fwd heightmap
