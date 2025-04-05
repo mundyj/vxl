@@ -352,7 +352,7 @@ vgl_intersection(const std::vector<vgl_ray_3d<T>> & rays, vgl_point_3d<T> & inte
 }
 template <class T>
 bool
-vgl_intersection(const std::vector<vgl_ray_3d<T>> & rays, const vnl_matrix<T> & covar, vgl_point_3d<T> & inter_pt)
+vgl_intersection(const std::vector<vgl_ray_3d<T>> & rays, const vnl_matrix<T> & covar, vgl_point_3d<T> & inter_pt, std::vector<T>& perp_distance_sq)
 {
   size_t n = rays.size(), nr = covar.rows(), nc = covar.cols();
   if (n < 2)
@@ -371,6 +371,7 @@ vgl_intersection(const std::vector<vgl_ray_3d<T>> & rays, const vnl_matrix<T> & 
     std::cout << "covariance matrix is singular" << std::endl;
     return false;
   }
+  perp_distance_sq.resize(n, T(0));
   vnl_matrix<T> cov_inv = svd_cov.inverse();
   // plane coordinate vectors for planes perpendicular to each ray
   // perp_T = [u_0, v_0, u_1, v_1, ... , u_n-1, v_n-1]
@@ -392,6 +393,11 @@ vgl_intersection(const std::vector<vgl_ray_3d<T>> & rays, const vnl_matrix<T> & 
     vnl_vector_fixed<T, 3> vi(vvec.x(), vvec.y(), vvec.z());
     perp_T.set_column(pidx, ui.as_vector());
     perp_T.set_column(pidx + 1, vi.as_vector());
+    //           _                                _
+    //          |u0x v0x u1x v1x ... unr-1x vnr-1x |
+    // perp_T = |u0y v0y u1y v1y ... unr-1y vnr-1y |
+    //          |u0z v0z u1z v1z ... vnr-1z vnr-1z |
+    //           -                                -
     // cache the ray origins for the next stage
     ray_origins[0][i] = org_i.x();
     ray_origins[1][i] = org_i.y();
@@ -425,6 +431,19 @@ vgl_intersection(const std::vector<vgl_ray_3d<T>> & rays, const vnl_matrix<T> & 
   // the intersection point based on weighted least squares
   vnl_matrix<T> X = A_inv * perp_T * cov_inv * proj;
   inter_pt.set(X[0][0], X[1][0], X[2][0]);
+  vnl_matrix<T> temp_x(3,1); temp_x.set_column(0,X[0]);
+  pidx = 0;
+  vnl_matrix<T> temp_p(1, 3), temp_u, temp_v;
+  for (size_t i = 0; i < n; ++i, pidx += 2){
+    temp_p.set_row(0, perp.get_row(pidx));
+    temp_u = temp_p*temp_x;
+    temp_p.set_row(0, perp.get_row(pidx+1));
+    temp_v = temp_p*temp_x;
+    T du = temp_u[0][0]-proj[pidx][0];
+    T dv = temp_v[0][0]-proj[pidx+1][0];
+    T dsq = du*du + dv*dv;
+     perp_distance_sq[i]=dsq;
+  }
   return true;
 }
 // special case of two rays and also returns the closest distance between the rays
@@ -466,7 +485,7 @@ vgl_intersection(const vgl_ray_3d<T> & ray0, const vgl_ray_3d<T> & ray1, vgl_poi
     const std::list<vgl_plane_3d<T>> & planes, std::vector<T> ws, vgl_infinite_line_3d<T> &, T & residual); \
   template bool vgl_intersection(std::vector<vgl_ray_3d<T>> const & rays, vgl_point_3d<T> & inter_pt);      \
   template bool vgl_intersection(                                                                           \
-    std::vector<vgl_ray_3d<T>> const & rays, vnl_matrix<T> const & covar, vgl_point_3d<T> & inter_pt);      \
+    std::vector<vgl_ray_3d<T>> const & rays, vnl_matrix<T> const & covar, vgl_point_3d<T> & inter_pt, std::vector<T>&); \
   template bool vgl_intersection(                                                                           \
     vgl_ray_3d<T> const & ray0, vgl_ray_3d<T> const & ray1, vgl_point_3d<T> & inter_pt, T & dist)
 #endif // vgl_algo_intersection_hxx_

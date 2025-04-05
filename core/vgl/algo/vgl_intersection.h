@@ -74,7 +74,7 @@ vgl_intersection(const std::vector<vgl_ray_3d<T>> & rays, vgl_point_3d<T> & inte
 //
 template <class T>
 bool
-vgl_intersection(const std::vector<vgl_ray_3d<T>> & rays, const vnl_matrix<T> & covar, vgl_point_3d<T> & inter_pt);
+vgl_intersection(const std::vector<vgl_ray_3d<T>> & rays, const vnl_matrix<T> & covar, vgl_point_3d<T> & inter_pt, std::vector<T>& perp_distance_sq=std::vector<T>());
 
 // special case of two rays
 // also returns the closest distance between the rays

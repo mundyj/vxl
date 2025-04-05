@@ -209,7 +209,8 @@ acal_f_utils::intersect_tracks_with_3d(
       if (!vgl_intersection(track_rays, inter_pt))
         continue;
     }else{
-      if (!vgl_intersection(track_rays, ray_covariance, inter_pt))
+        std::vector<double> er;
+      if (!vgl_intersection(track_rays, ray_covariance, inter_pt, er))
         continue;
       else{//
         size_t n = track_rays.size();

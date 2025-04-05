@@ -31,6 +31,7 @@ bool acal_single_track_solver::solve()
     }
   }else{
     // condition large track solutions
+      std::vector<double> ray_dist_plane_sq;
     if(track_rays.size() > large_track_size_){
       std::cout << "Processing the large number of rays case ( " << track_rays.size() << " )"<< std::endl;
       vnl_svd<double> svd(covar_plane_cs_);
@@ -45,6 +46,7 @@ bool acal_single_track_solver::solve()
       double min_singular_value = W[nr-1];
       // ill-conditioned problem metric
       double ill_cond = max_singular_value/min_singular_value;
+      
       if(ill_cond > 100){
         std::cout << "Large ray satellite covar is ill-conditioned ( " << ill_cond << " )"<< std::endl;
         double cond_add = max_singular_value*max_sing_val_fraction_;
@@ -54,14 +56,15 @@ bool acal_single_track_solver::solve()
         vnl_svd<double> svd_add(cond_covar);
         std::cout << "After add condition is  " << 1.0/svd_add.well_condition() << std::endl;
       }
-      if (!vgl_intersection(track_rays, cond_covar, track_3d_point_)){
+      std::vector<double> ray_dist_cond_sq;
+      if (!vgl_intersection(track_rays, cond_covar, track_3d_point_, ray_dist_cond_sq)){
         std::cerr << "Intersection failed - while using covariance on a large number of rays" << std::endl;
         return false;
       }
       else{
         std::cout << "Large number of rays intersection point (lvcs) " << track_3d_point_ << std::endl;
       }// end large number of rays
-    }else if (!vgl_intersection(track_rays, covar_plane_cs_, track_3d_point_)){
+    }else if (!vgl_intersection(track_rays, covar_plane_cs_, track_3d_point_, ray_dist_plane_sq)){
       std::cerr << "Intersection failed - while using covariance" << std::endl;
       return false;
     }else if(verbose_plus){
