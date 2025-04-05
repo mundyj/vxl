@@ -528,7 +528,8 @@ test_ray_intersection_with_covariance()
   rays.push_back(r2);
   rays.push_back(r3);
   vgl_point_3d<double> inter_pt;
-  bool good = vgl_intersection(rays, cov, inter_pt);
+  std::vector<double> perp_dist_sq;
+  bool good = vgl_intersection(rays, cov, inter_pt, perp_dist_sq);
   if (good)
   {
     vgl_point_3d<double> origin(1.0, 2.0, 3.0);
@@ -546,7 +547,9 @@ test_ray_intersection_with_covariance()
   std::vector<vgl_ray_3d<double>> rays2;
   rays2.push_back(rv);
   rays2.push_back(rob);
-  vnl_matrix<double> cov2(4, 4, 0.0);
+  vnl_matrix<double> cov2(4, 4, 0.0), covI(4, 4, 0.0);
+  covI[0][0] = 1.0; covI[1][1] = 1.0; covI[2][2] = 1.0; covI[3][3] = 1.0;
+  perp_dist_sq.clear();
   cov2[0][0] = 4.0;
   cov2[0][1] = 2.0;
   cov2[0][2] = 2.4;
@@ -559,8 +562,8 @@ test_ray_intersection_with_covariance()
   cov2[3][1] = 2.4;
   cov2[3][2] = 4.5;
   cov2[3][3] = 9.0;
-
-  good = vgl_intersection(rays2, cov2, inter_pt);
+  perp_dist_sq.clear();
+  good = vgl_intersection(rays2, cov2, inter_pt, perp_dist_sq);
   if (good)
   {
     vgl_point_3d<double> gt(0.48780487804878114, -0.6097560975609748, -0.9857199717871661);
@@ -570,6 +573,21 @@ test_ray_intersection_with_covariance()
   else
   {
     TEST("ray_intersection with full covariance", true, false);
+  }
+  perp_dist_sq.clear();
+  good = vgl_intersection(rays2, covI, inter_pt, perp_dist_sq);
+  if (good)
+  {
+      double d = 1.0;
+      double er_sum = 0.0;
+      for (size_t i = 0; i < 2; ++i)
+          er_sum += fabs(perp_dist_sq[i] - d);
+      
+      TEST_NEAR("ray_intersection with perpendicular distance error", er_sum, 0.0, 0.00001);
+  }
+  else
+  {
+      TEST("ray_intersection with perpendicular distance error", true, false);
   }
   // actual rays and covariance
   vgl_ray_3d<double> ar0(vgl_point_3d<double>(-257.819382104, 873.182301258, 3192.74816333),
@@ -605,7 +623,8 @@ test_ray_intersection_with_covariance()
   S[9][9] = 2.60122962302;
   S[10][10] = 2.53017333169;
   S[11][11] = 2.53017333169;
-  good = vgl_intersection(rays3, S, inter_pt);
+  perp_dist_sq.clear();
+  good = vgl_intersection(rays3, S, inter_pt, perp_dist_sq);
   vgl_point_3d<double> agt(237.849, -33.2573, 44.0717);
   double dif = (inter_pt - agt).length();
   std::cout << "Actual cast inter pt " << inter_pt << std::endl;
