@@ -9,8 +9,10 @@
 bool acal_single_track_solver::solve()
 {
   std::cout << "\n=====> Solve for cam translation(s)<=====" << std::endl;
-
+  
   std::vector<vgl_ray_3d<double> >  track_rays;
+  std::vector<double> ray_dist_sq;
+  std::vector<size_t> ray_ids;
   for (std::map<size_t, vgl_point_2d<double> >::const_iterator cit = track_.begin();
        cit != track_.end(); ++cit)
     {
@@ -19,6 +21,7 @@ bool acal_single_track_solver::solve()
       vgl_homg_point_2d<double> img_pt(cit->second);
       vgl_ray_3d<double> ray = cam.backproject_ray(img_pt);
       track_rays.push_back(ray);
+      ray_ids.push_back(cam_idx);
     }
   if(track_rays.size()<2){
     std::cerr << "Insufficient number of rays - fail" << std::endl;
@@ -31,7 +34,6 @@ bool acal_single_track_solver::solve()
     }
   }else{
     // condition large track solutions
-      std::vector<double> ray_dist_plane_sq;
     if(track_rays.size() > large_track_size_){
       std::cout << "Processing the large number of rays case ( " << track_rays.size() << " )"<< std::endl;
       vnl_svd<double> svd(covar_plane_cs_);
@@ -56,15 +58,14 @@ bool acal_single_track_solver::solve()
         vnl_svd<double> svd_add(cond_covar);
         std::cout << "After add condition is  " << 1.0/svd_add.well_condition() << std::endl;
       }
-      std::vector<double> ray_dist_cond_sq;
-      if (!vgl_intersection(track_rays, cond_covar, track_3d_point_, ray_dist_cond_sq)){
+      if (!vgl_intersection(track_rays, cond_covar, track_3d_point_, ray_dist_sq)){
         std::cerr << "Intersection failed - while using covariance on a large number of rays" << std::endl;
         return false;
       }
       else{
         std::cout << "Large number of rays intersection point (lvcs) " << track_3d_point_ << std::endl;
       }// end large number of rays
-    }else if (!vgl_intersection(track_rays, covar_plane_cs_, track_3d_point_, ray_dist_plane_sq)){
+    }else if (!vgl_intersection(track_rays, covar_plane_cs_, track_3d_point_, ray_dist_sq)){
       std::cerr << "Intersection failed - while using covariance" << std::endl;
       return false;
     }else if(verbose_plus){
@@ -143,7 +144,16 @@ bool acal_single_track_solver::solve()
     min_eps_v = er.y();
     max_eps_v = er.y();
     sq_eps_v = min_eps_v*min_eps_v;
-    sol_errors_[cidx] = acal_solution_error(min_eps_u, min_eps_v, max_eps_u, max_eps_v, sqrt(sq_eps_u), sqrt(sq_eps_v));
+    sol_projection_errors_[cidx] = acal_solution_error(min_eps_u, min_eps_v, max_eps_u, max_eps_v, sqrt(sq_eps_u), sqrt(sq_eps_v));
+    if(ray_dist_sq.size() == 0)
+      continue;
+    std::vector<size_t>::iterator vit;
+    vit = std::find( ray_ids.begin(), ray_ids.end(), cidx);
+    if(vit != ray_ids.end()){
+      size_t vidx = vit-ray_ids.begin();
+      double per_sq = ray_dist_sq[vidx];
+      ray_perpendicular_dists_sq_[cidx]=per_sq;
+    }
   }
   return true;
 }
@@ -160,8 +170,8 @@ acal_single_track_solver::print_solution()
     size_t cam_idx = mit->first;
     std::string name = inames_[mit->first];
     std::cout << name << ' ' << cam_idx << " (" << mit->second.x() << ' ' << mit->second.y() << ") "
-              << sol_errors_[cam_idx].min_err() << ' ' << sol_errors_[cam_idx].max_err()
-              << ' ' << sol_errors_[cam_idx].total_rms() << std::endl;
+              << sol_projection_errors_[cam_idx].min_err() << ' ' << sol_projection_errors_[cam_idx].max_err()
+              << ' ' << sol_projection_errors_[cam_idx].total_rms() << std::endl;
   }
 }
 std::map<size_t, vgl_vector_2d<double> >
