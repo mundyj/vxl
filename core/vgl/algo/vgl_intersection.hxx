@@ -15,6 +15,7 @@
 #include <vgl/vgl_ray_3d.h>
 #include <vgl/vgl_intersection.h>
 #include <vgl/vgl_polygon.h>
+#include <vgl/vgl_closest_point.h>
 
 #include <vnl/vnl_matrix.h>
 #include <vnl/vnl_matrix_fixed.h>
@@ -352,7 +353,7 @@ vgl_intersection(const std::vector<vgl_ray_3d<T>> & rays, vgl_point_3d<T> & inte
 }
 template <class T>
 bool
-vgl_intersection(const std::vector<vgl_ray_3d<T>> & rays, const vnl_matrix<T> & covar, vgl_point_3d<T> & inter_pt, std::vector<T>& perp_distance_sq)
+vgl_intersection(const std::vector<vgl_ray_3d<T>> & rays, const vnl_matrix<T> & covar, vgl_point_3d<T> & inter_pt, std::vector<vgl_vector_3d<T> >& perp_vectors)
 {
   size_t n = rays.size(), nr = covar.rows(), nc = covar.cols();
   if (n < 2)
@@ -371,7 +372,7 @@ vgl_intersection(const std::vector<vgl_ray_3d<T>> & rays, const vnl_matrix<T> & 
     std::cout << "covariance matrix is singular" << std::endl;
     return false;
   }
-  perp_distance_sq.resize(n, T(0));
+  perp_vectors.resize(n, vgl_vector_3d<T>());
   vnl_matrix<T> cov_inv = svd_cov.inverse();
   // plane coordinate vectors for planes perpendicular to each ray
   // perp_T = [u_0, v_0, u_1, v_1, ... , u_n-1, v_n-1]
@@ -431,18 +432,11 @@ vgl_intersection(const std::vector<vgl_ray_3d<T>> & rays, const vnl_matrix<T> & 
   // the intersection point based on weighted least squares
   vnl_matrix<T> X = A_inv * perp_T * cov_inv * proj;
   inter_pt.set(X[0][0], X[1][0], X[2][0]);
-  vnl_matrix<T> temp_x(3,1); temp_x.set_column(0,X[0]);
-  pidx = 0;
-  vnl_matrix<T> temp_p(1, 3), temp_u, temp_v;
-  for (size_t i = 0; i < n; ++i, pidx += 2){
-    temp_p.set_row(0, perp.get_row(pidx));
-    temp_u = temp_p*temp_x;
-    temp_p.set_row(0, perp.get_row(pidx+1));
-    temp_v = temp_p*temp_x;
-    T du = temp_u[0][0]-proj[pidx][0];
-    T dv = temp_v[0][0]-proj[pidx+1][0];
-    T dsq = du*du + dv*dv;
-     perp_distance_sq[i]=dsq;
+  for (size_t r = 0; r < n; ++r) {
+      const vgl_ray_3d<T>& ray = rays[r];
+    vgl_point_3d<T> cp = vgl_closest_point<T>(ray, inter_pt);
+    vgl_vector_3d<T> v = cp - inter_pt;
+    perp_vectors[r]=v;
   }
   return true;
 }
@@ -485,7 +479,7 @@ vgl_intersection(const vgl_ray_3d<T> & ray0, const vgl_ray_3d<T> & ray1, vgl_poi
     const std::list<vgl_plane_3d<T>> & planes, std::vector<T> ws, vgl_infinite_line_3d<T> &, T & residual); \
   template bool vgl_intersection(std::vector<vgl_ray_3d<T>> const & rays, vgl_point_3d<T> & inter_pt);      \
   template bool vgl_intersection(                                                                           \
-    std::vector<vgl_ray_3d<T>> const & rays, vnl_matrix<T> const & covar, vgl_point_3d<T> & inter_pt, std::vector<T>&); \
+                                 std::vector<vgl_ray_3d<T>> const & rays, vnl_matrix<T> const & covar, vgl_point_3d<T> & inter_pt, std::vector<vgl_vector_3d<T> >& perp_vectors); \
   template bool vgl_intersection(                                                                           \
     vgl_ray_3d<T> const & ray0, vgl_ray_3d<T> const & ray1, vgl_point_3d<T> & inter_pt, T & dist)
 #endif // vgl_algo_intersection_hxx_
