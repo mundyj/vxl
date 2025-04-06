@@ -11,7 +11,7 @@ bool acal_single_track_solver::solve()
   std::cout << "\n=====> Solve for cam translation(s)<=====" << std::endl;
   
   std::vector<vgl_ray_3d<double> >  track_rays;
-  std::vector<double> ray_dist_sq;
+  std::vector<vgl_vector_3d<double> > ray_perp_vectors;
   std::vector<size_t> ray_ids;
   for (std::map<size_t, vgl_point_2d<double> >::const_iterator cit = track_.begin();
        cit != track_.end(); ++cit)
@@ -58,14 +58,14 @@ bool acal_single_track_solver::solve()
         vnl_svd<double> svd_add(cond_covar);
         std::cout << "After add condition is  " << 1.0/svd_add.well_condition() << std::endl;
       }
-      if (!vgl_intersection(track_rays, cond_covar, track_3d_point_, ray_dist_sq)){
+      if (!vgl_intersection(track_rays, cond_covar, track_3d_point_, ray_perp_vectors)){
         std::cerr << "Intersection failed - while using covariance on a large number of rays" << std::endl;
         return false;
       }
       else{
         std::cout << "Large number of rays intersection point (lvcs) " << track_3d_point_ << std::endl;
       }// end large number of rays
-    }else if (!vgl_intersection(track_rays, covar_plane_cs_, track_3d_point_, ray_dist_sq)){
+    }else if (!vgl_intersection(track_rays, covar_plane_cs_, track_3d_point_, ray_perp_vectors)){
       std::cerr << "Intersection failed - while using covariance" << std::endl;
       return false;
     }else if(verbose_plus){
@@ -145,14 +145,14 @@ bool acal_single_track_solver::solve()
     max_eps_v = er.y();
     sq_eps_v = min_eps_v*min_eps_v;
     sol_projection_errors_[cidx] = acal_solution_error(min_eps_u, min_eps_v, max_eps_u, max_eps_v, sqrt(sq_eps_u), sqrt(sq_eps_v));
-    if(ray_dist_sq.size() == 0)
+    if(ray_perp_vectors.size() == 0)
       continue;
     std::vector<size_t>::iterator vit;
     vit = std::find( ray_ids.begin(), ray_ids.end(), cidx);
     if(vit != ray_ids.end()){
       size_t vidx = vit-ray_ids.begin();
-      double per_sq = ray_dist_sq[vidx];
-      ray_perpendicular_dists_sq_[cidx]=per_sq;
+      vgl_vector_3d<double>& v = ray_perp_vectors[vidx];
+      ray_perpendicular_vectors_[cidx]=v;
     }
   }
   return true;

@@ -57,7 +57,7 @@ public:
 
    std::map < size_t, acal_solution_error>  solution_projection_errors(){return sol_projection_errors_;}
 
-   std::map<size_t, double>  ray_perpendicular_distances_sq() {return ray_perpendicular_dists_sq_;}
+   std::map<size_t, vgl_vector_3d<double> >  ray_perpendicular_vectors() {return ray_perpendicular_vectors_;}
    std::map<size_t, vpgl_affine_camera<double> > adjusted_acams() {return adjusted_acams_;}
 
   // ===== for debug purposes =====
@@ -78,7 +78,7 @@ public:
   std::map<size_t, vgl_vector_2d<double> > translations_;
   vgl_point_3d<double> track_3d_point_;
   std::map<size_t, acal_solution_error> sol_projection_errors_;
-  std::map<size_t, double> ray_perpendicular_dists_sq_ ;
+  std::map<size_t, vgl_vector_3d<double> > ray_perpendicular_vectors_;
 };
 
 #endif
