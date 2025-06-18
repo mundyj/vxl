@@ -247,7 +247,7 @@ inline std::ostream& operator<< (std::ostream& os,
                                 bsta_mixture_fixed<dist_,s> const& no)
 {
   for (unsigned i=0; i<no.num_components(); ++i)
-    os<<"Component #"<<i<<" weight=: "<<no.weight(i)<<"distribution: "<<no.distribution(i)<<std::endl;
+    os<<"Component # "<<i<<" weight=: "<<no.weight(i)<<" distribution: "<<no.distribution(i)<<std::endl;
   return os;
 }
 

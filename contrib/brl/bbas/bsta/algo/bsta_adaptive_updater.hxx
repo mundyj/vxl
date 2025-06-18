@@ -24,7 +24,7 @@
 //: The update function
 template <class mix_dist_>
 void
-bsta_mg_statistical_updater<mix_dist_>::update( mix_dist_& mix, const vector_& sample, T alpha ) const
+bsta_mg_statistical_updater<mix_dist_>::update( mix_dist_& mix, const vector_& sample, T alpha , bool print) const
 {
   const unsigned num_components = mix.num_components();
 
@@ -106,7 +106,7 @@ template <class mix_dist_>
 void
 bsta_mg_grimson_statistical_updater<mix_dist_>::update( mix_dist_& mix,
                                                         const vector_& sample,
-                                                        T alpha ) const
+                                                        T alpha, bool print ) const
 {
   int match = -1;
   unsigned int mix_nc = mix.num_components();
@@ -129,6 +129,10 @@ bsta_mg_grimson_statistical_updater<mix_dist_>::update( mix_dist_& mix,
 
   if (match>0)
     mix.sort(bsta_gaussian_fitness<gaussian_>::order, match);
+  if (print && match >= 0){
+      std::cout << "== " << sample << " ==\n";
+      std::cout  << mix << std::endl;
+  }
 }
 
 

@@ -110,13 +110,13 @@ class bsta_mg_statistical_updater : public bsta_mg_adaptive_updater<mix_dist_>
       gt2_(g_thresh*g_thresh), min_var_(min_stdev*min_stdev) {}
 
   //: The main function
-  void operator() ( obs_mix_dist_& mix, const vector_& sample ) const
+  void operator() ( obs_mix_dist_& mix, const vector_& sample, bool print = false ) const
   {
     mix.num_observations += T(1);
-    this->update(mix, sample, T(1)/mix.num_observations);
+    this->update(mix, sample, T(1)/mix.num_observations, print);
   }
 
-  void update( mix_dist_& mix, const vector_& sample, T alpha ) const;
+  void update( mix_dist_& mix, const vector_& sample, T alpha, bool print ) const;
 #if 0
   void update( mix_dist_& mix, const T & sample, T alpha ) const;
 #endif
@@ -224,13 +224,13 @@ class bsta_mg_grimson_statistical_updater : public bsta_mg_adaptive_updater<mix_
       gt2_(g_thresh*g_thresh), min_var_(min_stdev*min_stdev) {}
 
   //: The main function
-  void operator() ( obs_mix_dist_& mix, const vector_& sample ) const
+  void operator() ( obs_mix_dist_& mix, const vector_& sample, bool print ) const
   {
     mix.num_observations += T(1);
-    this->update(mix, sample, T(1)/mix.num_observations);
+    this->update(mix, sample, T(1)/mix.num_observations, print);
   }
 
-  void update( mix_dist_& mix, const vector_& sample, T alpha ) const;
+  void update( mix_dist_& mix, const vector_& sample, T alpha, bool print ) const;
 
   //: Squared Gaussian Mahalanobis distance threshold
   T gt2_;
@@ -301,10 +301,10 @@ class bsta_mg_grimson_weighted_updater : bsta_mg_grimson_statistical_updater<mix
     : bsta_mg_grimson_statistical_updater<mix_dist_>(model, max_cmp, g_thresh, min_stdev){}
 
   //: The main function
-  void operator() ( obs_mix_dist_& mix, const vector_& sample, const T weight ) const
+  void operator() ( obs_mix_dist_& mix, const vector_& sample, const T weight, bool print ) const
   {
     mix.num_observations += weight;
-    this->update(mix, sample, weight/mix.num_observations);
+    this->update(mix, sample, weight/mix.num_observations, print);
   }
 };
 
