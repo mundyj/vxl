@@ -301,7 +301,7 @@ class bsta_mg_grimson_weighted_updater : bsta_mg_grimson_statistical_updater<mix
     : bsta_mg_grimson_statistical_updater<mix_dist_>(model, max_cmp, g_thresh, min_stdev){}
 
   //: The main function
-  void operator() ( obs_mix_dist_& mix, const vector_& sample, const T weight, bool print ) const
+  void operator() ( obs_mix_dist_& mix, const vector_& sample, const T weight, bool print = false ) const
   {
     mix.num_observations += weight;
     this->update(mix, sample, weight/mix.num_observations, print);
