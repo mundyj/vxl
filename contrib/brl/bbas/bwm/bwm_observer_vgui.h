@@ -87,22 +87,33 @@ class bwm_observer_vgui : public bwm_observer_img, public bwm_observer
                              vsol_polygon_3d_sptr& poly3d) = 0;
 
   //: move the correspondence location and replace the cross soview.
-  void set_corr(float x, float y);
+  void set_corr(float x, float y,  float red = -1.0f, float green = -1.0f, float blue = -1.0f);
+
+  void set_anaglyph_corr(float x, float y);
 
   //: the current location of the correspondence point
   void corr_image_pt(float& x, float& y);
 
   //: the current location of the correspondence point, if corr is valid
   bool corr_image_pt(vgl_point_2d<double>& pt);
-
-
+  
+  //: the list of anaglyph correspondences
+  std::vector < std::tuple<vgl_point_3d<double>, bwm_soview2D_cross*, bwm_soview2D_cross*> >& anaglyph_corrs() { return anaglyph_corrs_; }
+ 
   //: remove the cross soview and set its pointer to null
   void remove_corr_pt();
 
   void record_corr_pt() { corr_valid_ = false; }
-
+  
   //: display a cross soview at the specified location
   void add_cross(float x, float y, float r);
+
+  //: display a cross soview at the specified location with different color
+  void add_cross(float x, float y, float r, float red, float green, float blue);
+
+  void remove_anaglyph_cross();
+  void add_anaglyph_cross(float x, float y);
+  void add_anaglyph_cross(bwm_soview2D_cross* left, bwm_soview2D_cross* right);
 
   //: find the object corresponding to the soview id.
   bwm_observable_sptr find_object(unsigned soview2d_id, unsigned &face_id);
@@ -123,7 +134,16 @@ class bwm_observer_vgui : public bwm_observer_img, public bwm_observer
   bool show_vertices_;
   bool corr_valid_;
 
-  //: the current correspondence point
+
+  float x_ = 0.0f;
+  float y_ = 0.0f;
+  double disparity_ = -10.0;
+  bool anaglyph_active_= false;
+  bwm_soview2D_cross* left_cross_=nullptr;
+  bwm_soview2D_cross* right_cross_=nullptr;
+  std::vector < std::tuple<vgl_point_3d<double>, bwm_soview2D_cross*, bwm_soview2D_cross*> > anaglyph_corrs_;
+
+  //: the current correspondence points
   std::vector<std::pair<vgl_point_2d<double>, bwm_soview2D_cross * > > corr_;
 
   //: objects are kept as a triple (bwm_observable *, face_id, bgui_vsol_soview2D_polygon*)

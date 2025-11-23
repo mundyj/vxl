@@ -790,8 +790,26 @@ vgui_mfc_adaptor::OnMouseMove(UINT nFlags, CPoint point)
 BOOL
 vgui_mfc_adaptor::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 {
-#ifdef DEBUG
-  std::cerr << "Mouse wheel events are not handled\n";
-#endif
-  return FALSE;
+
+  vgui_event e( (zDelta > 0) ? vgui_WHEEL_UP : vgui_WHEEL_DOWN );
+
+  // Map modifiers
+  if (nFlags & MK_SHIFT)
+    e.modifier = vgui_modifier((int)e.modifier | vgui_SHIFT);
+  if (nFlags & MK_CONTROL)
+    e.modifier = vgui_modifier((int)e.modifier | vgui_CTRL);
+
+  // Position in your coordinate system
+  e.wx = pt.x;
+  e.wy = m_height - pt.y;
+
+  // wheel delta
+  e.delta = zDelta;
+
+  // Dispatch into your tableau system
+  dispatch_to_tableau(e);
+  post_redraw();
+
+  return TRUE; // tell MFC we handled it
+
 }

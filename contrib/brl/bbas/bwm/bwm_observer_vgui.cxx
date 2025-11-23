@@ -68,6 +68,7 @@ bool bwm_observer_vgui::handle(const vgui_event& e)
       e.button == vgui_LEFT &&
       e.modifier == vgui_SHIFT &&
       bwm_observer_mgr::instance()->corr_mode() != bwm_observer_mgr::FIDUCIAL_IMAGE_LOCATION &&
+      bwm_observer_mgr::instance()->corr_mode() != bwm_observer_mgr::ANAGLYPH_3D &&
       bwm_observer_mgr::instance()->in_corr_picking())
   {
       float x, y;
@@ -75,7 +76,38 @@ bool bwm_observer_vgui::handle(const vgui_event& e)
       this->set_corr(x, y);
       this->correspondence_action();
       return true;
+  }else if( e.type == vgui_MOTION &&
+      bwm_observer_mgr::instance()->corr_mode() == bwm_observer_mgr::ANAGLYPH_3D &&
+      bwm_observer_mgr::instance()->in_corr_picking())
+  {
+      //freeze mouse position at x_, y_ while handling other events
+      pi.window_to_image_coordinates(e.wx, e.wy, x_, y_);
+      this->set_anaglyph_corr(x_, y_);
+      return true;
+  }else if (e.type == vgui_BUTTON_DOWN && e.button == vgui_LEFT &&
+      bwm_observer_mgr::instance()->corr_mode() == bwm_observer_mgr::ANAGLYPH_3D &&
+      bwm_observer_mgr::instance()->in_corr_picking()) {
+      if(!anaglyph_active_)
+      anaglyph_active_ = true;
+      else {
+          anaglyph_active_ = false;
+          bwm_soview2D_cross* new_left = new bwm_soview2D_cross(*left_cross_);
+          bwm_soview2D_cross* new_right = new bwm_soview2D_cross(*right_cross_);
+          vgl_point_3d<double> pcorr(x_, y_, disparity_);
+          anaglyph_corrs_.emplace_back(pcorr, new_left, new_right);
+          this->remove_anaglyph_cross();
+          this->add_anaglyph_cross(new_left, new_right);
+          disparity_ = -10;
+      }
+      return true;
+  }else if (anaglyph_active_&&(e.type == vgui_WHEEL_UP || e.type == vgui_WHEEL_DOWN) &&
+      bwm_observer_mgr::instance()->corr_mode() == bwm_observer_mgr::ANAGLYPH_3D &&
+      bwm_observer_mgr::instance()->in_corr_picking()) {
+      disparity_ += e.delta / 200.0f;
+      this->set_anaglyph_corr(x_, y_);
+      return true;
   }
+  
   return base::handle(e);
 }
 
@@ -88,6 +120,18 @@ void bwm_observer_vgui::add_cross(float x, float y, float r)
   corr_.push_back(c);
   this->add(cross);
   this->post_redraw();
+}
+void  bwm_observer_vgui::add_cross(float x, float y, float r, float red, float green, float blue) {
+    bwm_soview2D_cross* cross = new bwm_soview2D_cross(x, y, r);
+    std::pair<vgl_point_2d<double>, bwm_soview2D_cross* > c;
+    c.first = vgl_point_2d<double>(x, y);
+    c.second = cross;
+    corr_.push_back(c);
+    vgui_style_sptr current_style = vgui_style::new_style(this->style_);
+    this->set_foreground(red, green, blue);
+    this->add(cross);
+    this->post_redraw();
+    this->style_ = current_style;
 }
 
 void bwm_observer_vgui::corr_image_pt(float& x, float& y)
@@ -455,7 +499,8 @@ void bwm_observer_vgui::delete_all()
   this->clear_objects();
 }
 
-void bwm_observer_vgui::set_corr(float x, float y)
+void bwm_observer_vgui::set_corr(float x, float y,  float red , float green , float blue)
+
 {
    // delete the previous correspondence point if valid
   if (corr_valid_ && (corr_.size()>=1)) {
@@ -463,10 +508,51 @@ void bwm_observer_vgui::set_corr(float x, float y)
    this->remove(corr_[corr_.size()-1].second);
     corr_.pop_back();
   }
-
   // draw a cross at that point
-  add_cross(x, y, 2.0);
+  if (red < 0.0f)
+      add_cross(x, y, 2.0);
+  else add_cross(x, y, 2.0, red, green, blue);
   corr_valid_ = true;
+}
+
+void bwm_observer_vgui::remove_anaglyph_cross() {
+    if (left_cross_) {
+        this->remove(left_cross_);
+        left_cross_ = nullptr;
+    }
+    if (right_cross_) {
+        this->remove(right_cross_);
+        right_cross_ = nullptr;
+    }
+}
+void bwm_observer_vgui::add_anaglyph_cross(float x, float y) {
+    left_cross_ = new bwm_soview2D_cross(x, y, 2.0);
+    right_cross_ = new bwm_soview2D_cross(x + disparity_, y, 2.0);
+    vgui_style_sptr current_style = vgui_style::new_style(this->style_);
+    this->set_foreground(1.0f, 0.0f, 0.0f);
+    this->add(left_cross_);
+    this->post_redraw();
+    this->set_foreground(0.0f, 1.0f, 1.0f);
+    this->add(right_cross_);
+    this->post_redraw();
+    this->style_ = current_style;
+}
+void bwm_observer_vgui::add_anaglyph_cross(bwm_soview2D_cross* left, bwm_soview2D_cross* right) {
+    
+    vgui_style_sptr current_style = vgui_style::new_style(this->style_);
+    this->set_foreground(1.0f, 0.0f, 0.0f);
+    this->add(left);
+    this->post_redraw();
+    this->set_foreground(0.0f, 1.0f, 1.0f);
+    this->add(right);
+    this->post_redraw();
+    this->style_ = current_style;
+}
+void bwm_observer_vgui::set_anaglyph_corr(float x, float y) {
+    if (!anaglyph_active_)
+        return;
+    this->remove_anaglyph_cross();
+    this->add_anaglyph_cross(x, y);
 }
 
 void bwm_observer_vgui::remove_corr_pt()

@@ -24,9 +24,9 @@
 class bwm_observer_mgr
 {
  public:
-  typedef enum {IMAGE_TO_IMAGE, WORLD_TO_IMAGE, WORLD_TO_WORLD, FIDUCIAL_IMAGE_LOCATION} BWM_CORR_MODE;
+  typedef enum {IMAGE_TO_IMAGE, WORLD_TO_IMAGE, WORLD_TO_WORLD, FIDUCIAL_IMAGE_LOCATION, ANAGLYPH_3D} BWM_CORR_MODE;
   typedef enum {SINGLE_PT_CORR, MULTIPLE_CORRS} BWM_N_CORRS;
-  typedef enum {FEATURE_CORR, TERRAIN_CORR, FIDUCIAL_CORR} BWM_CORR_TYPE;
+  typedef enum {FEATURE_CORR, TERRAIN_CORR, FIDUCIAL_CORR, ANAGLYPH_CORR} BWM_CORR_TYPE;
 
   static bwm_observer_mgr* instance();
 
@@ -68,6 +68,7 @@ class bwm_observer_mgr
   bool match(bwm_observer_cam *obs, vgl_point_2d<double> pt);
   void save_corr(std::ostream& s);
   void save_corr_XML();
+  void save_corr_anaglyph();
   void update_corr(bwm_observer_cam* obs,vgl_point_2d<double> old_pt,vgl_point_2d<double> new_pt);
   void delete_last_corr();
   void delete_all_corr();
@@ -125,9 +126,15 @@ class bwm_observer_mgr
  private:
   bwm_observer_mgr() : start_corr_(false)
   {
+#if 0
     corr_mode_ = IMAGE_TO_IMAGE;
     n_corrs_ = SINGLE_PT_CORR;
     corr_type_ = FEATURE_CORR;
+#else
+    corr_mode_ = ANAGLYPH_3D;
+    n_corrs_ = MULTIPLE_CORRS;
+    corr_type_ = ANAGLYPH_CORR;
+#endif
   }
 
   static bwm_observer_mgr* instance_;

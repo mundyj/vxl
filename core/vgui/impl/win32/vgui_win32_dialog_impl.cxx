@@ -1183,7 +1183,7 @@ vgui_win32_dialog_impl::OnColor(HWND hDlg, WORD wCtrlId, LPTSTR lpColor)
     strColor += buffer;
     std::snprintf(buffer, sizeof(buffer), " %3d", GetGValue(cc.rgbResult));
     strColor += buffer;
-    std::snprintf(buffer, sizeof(buffer) " %3d", GetBValue(cc.rgbResult));
+    std::snprintf(buffer, sizeof(buffer), " %3d", GetBValue(cc.rgbResult));
     strColor += buffer;
     SetWindowText(GetDlgItem(hDlg, wCtrlId - 1), strColor.c_str());
   }

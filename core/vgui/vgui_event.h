@@ -117,6 +117,9 @@ public:
   //: Position of the mouse pointer in viewport coordinates when event occurred.
   int wx, wy;
 
+  //: scroll wheel delta
+  int delta;
+
   //: Timestamp in milliseconds since app started.
   int timestamp;
 

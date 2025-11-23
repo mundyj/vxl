@@ -35,9 +35,15 @@ bwm_observer_mgr* bwm_observer_mgr::instance()
 
 void bwm_observer_mgr::clear()
 {
-  corr_mode_ = IMAGE_TO_IMAGE;
-  n_corrs_ = SINGLE_PT_CORR;
-  corr_type_ = FEATURE_CORR;
+#if 0
+    corr_mode_ = IMAGE_TO_IMAGE;
+    n_corrs_ = SINGLE_PT_CORR;
+    corr_type_ = FEATURE_CORR;
+#else
+    corr_mode_ = ANAGLYPH_3D;
+    n_corrs_ = MULTIPLE_CORRS;
+    corr_type_ = ANAGLYPH_CORR;
+#endif
   start_corr_ = false;
   corr_list_.clear();
 }
@@ -158,7 +164,9 @@ void bwm_observer_mgr::set_corr_mode()
   int mode = bwm_observer_mgr::instance()->corr_mode();
   modes.push_back("Image to Image");
   modes.push_back("World to Image");
+  modes.push_back("World to World");
   modes.push_back("Image to Fiducial");
+  modes.push_back("Anaglyph 3D");
 
   std::vector<std::string> n_corrs;
   int n = bwm_observer_mgr::instance()->n_corrs();
@@ -170,6 +178,7 @@ void bwm_observer_mgr::set_corr_mode()
   types.push_back("Feature Correspondence ");
   types.push_back("Terrain Correspondence ");
   types.push_back("Fiducial Position ");
+  types.push_back("Analgyph");
 
   std::string name, type;
   params.choice("Correspondence Mode", modes, mode);
@@ -193,6 +202,10 @@ void bwm_observer_mgr::set_corr_mode()
   }else if(mode ==bwm_observer_mgr::FIDUCIAL_IMAGE_LOCATION){
     corr_mode_ =  bwm_observer_mgr::FIDUCIAL_IMAGE_LOCATION;
   }
+  else if (mode == bwm_observer_mgr::ANAGLYPH_3D) {
+      corr_mode_ = bwm_observer_mgr::ANAGLYPH_3D;
+  }else corr_mode_ = bwm_observer_mgr::IMAGE_TO_IMAGE;
+
   if (t == bwm_observer_mgr::FEATURE_CORR) {
     corr_type_ = bwm_observer_mgr::FEATURE_CORR;
   }
@@ -200,11 +213,13 @@ void bwm_observer_mgr::set_corr_mode()
     corr_type_ = bwm_observer_mgr::TERRAIN_CORR;
   }else if(t == bwm_observer_mgr::FIDUCIAL_CORR){
     corr_type_ = bwm_observer_mgr::FIDUCIAL_CORR;
+  } else if (t == bwm_observer_mgr::ANAGLYPH_CORR) {
+      corr_type_ = bwm_observer_mgr::ANAGLYPH_CORR;
   }else
     std::cout << "In bwm_observer_mgr::set_corr_mode() Undefined TYPE - " << t << std::endl;
 
-  corr_mode_ = bwm_observer_mgr::IMAGE_TO_IMAGE;
-
+  //corr_mode_ = bwm_observer_mgr::IMAGE_TO_IMAGE;
+  
   n_corrs_ = (BWM_N_CORRS) n;
 }
 
@@ -226,8 +241,9 @@ void bwm_observer_mgr::collect_corr()
     }
     corr->set_mode(false);
     corr->set_world_pt(wpt);
-  }
-  else
+  }else if (corr_mode_ = ANAGLYPH_3D) {
+      corr->set_mode(true);
+  }else
     std::cerr << "Unknown correspondence mode!\n";
 
   bool found = false;
@@ -244,7 +260,7 @@ void bwm_observer_mgr::collect_corr()
   if (found)
   {
     if (n_corrs_==MULTIPLE_CORRS) {
-      if (corr_type_ == FEATURE_CORR)
+      if (corr_type_ == FEATURE_CORR||corr_type_==ANAGLYPH_CORR)
         corr_list_.push_back(corr);
       else if (corr_type_ == TERRAIN_CORR)
         terrain_corr_list_.push_back(corr);
@@ -461,22 +477,41 @@ void bwm_observer_mgr::save_corr_XML()
     s << "</BWM_CONFIG>" << std::endl;
   }
 }
-
+void bwm_observer_mgr::save_corr_anaglyph()
+{
+    
+    std::string fname = bwm_utils::select_file();
+    std::ofstream s(fname.data());
+    std::vector<bwm_observer_cam*> observers = bwm_observer_mgr::instance()->observers_cam();
+    if (observers.size() != 1) {
+        std::cout << "Must have exactly one identity camera observer for anaglyph" << std::endl;
+        return;
+    }
+    bwm_observer_vgui* ovg0 = dynamic_cast<bwm_observer_vgui*>(observers[0]);
+    std::vector < std::tuple<vgl_point_3d<double>, bwm_soview2D_cross*, bwm_soview2D_cross*> >& corrs = ovg0->anaglyph_corrs();
+    size_t n = corrs.size();
+    s << "Ncorrespondences " << n << std::endl;
+    for (size_t i = 0; i < n; ++i) {
+       std::tuple<vgl_point_3d<double>, bwm_soview2D_cross*, bwm_soview2D_cross*>& corr = corrs[i];
+       vgl_point_3d<double>& c = std::get<0>(corr);
+       s << c.x() << ' ' << c.y() << ' ' << c.x()+c.z() << ' ' << c.y() << std::endl;
+      }
+    s.close();
+}
 void bwm_observer_mgr::delete_last_corr()
 {
-  unsigned i = corr_list_.size();
-  if (i > 0) {
-    // first notify the observer to delete the corr point on the screen
-    bwm_corr_sptr corr = corr_list_[i-1];
-    std::vector<bwm_observer_cam*> obs = corr->observers();
-    for (unsigned i=0; i<obs.size(); i++) {
-      obs[i]->remove_corr_pt();
-      obs[i]->post_redraw();
+    unsigned i = corr_list_.size();
+    if (i > 0) {
+        // first notify the observer to delete the corr point on the screen
+        bwm_corr_sptr corr = corr_list_[i - 1];
+        std::vector<bwm_observer_cam*> obs = corr->observers();
+        for (unsigned i = 0; i < obs.size(); i++) {
+            obs[i]->remove_corr_pt();
+            obs[i]->post_redraw();
+        }
+        corr_list_.pop_back();  // removes the last element
     }
-    corr_list_.pop_back();  // removes the last element
-  }
 }
-
 void bwm_observer_mgr::delete_all_corr()
 {
   while (corr_list_.size() > 0) {

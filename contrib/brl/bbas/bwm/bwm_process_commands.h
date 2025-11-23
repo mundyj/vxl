@@ -121,7 +121,12 @@ class bwm_save_corr_command: public vgui_command
   bwm_save_corr_command() {}
   ~bwm_save_corr_command() {}
   virtual std::string name() const {return "save_corr"; }
-  virtual void execute() { bwm_observer_mgr::instance()->save_corr_XML(); }
+  virtual void execute() {
+    if(bwm_observer_mgr::instance()->corr_mode() == bwm_observer_mgr::ANAGLYPH_3D)
+        bwm_observer_mgr::instance()->save_corr_anaglyph();
+    else
+      bwm_observer_mgr::instance()->save_corr_XML();
+  }
 };
 
 class bwm_del_last_corr_command: public vgui_command
