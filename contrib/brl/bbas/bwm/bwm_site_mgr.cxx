@@ -952,11 +952,11 @@ void bwm_site_mgr::load_cam_tableau()
   //static std::string img_file = "";
   static int camera_type = 0;
   std::vector<std::string> types;
-  types.push_back("generic");
+  types.push_back("identity");
   types.push_back("rational");
   types.push_back("projective");
   types.push_back("perspective");
-  types.push_back("identity");
+  types.push_back("generic");
   if(tk_name_ == "mfc"){
   vgui_dialog_extensions params ("Camera Tableau");
   params.field("Tableau Name", name);
@@ -982,7 +982,7 @@ void bwm_site_mgr::load_cam_tableau()
     if (!params.ask())
       return;
   }
-  if ((img_file == "") || (cam_file == "" && camera_type != 4)) {  // for identity camera type, cam_file can be empty ?
+  if ((img_file == "") || (cam_file == "" && camera_type != 0)) {  // for identity camera type, cam_file can be empty ?
     vgui_dialog error ("Error");
     error.message ("Please specify an input file (prefix)." );
     error.ask();
@@ -993,7 +993,7 @@ void bwm_site_mgr::load_cam_tableau()
   switch (camera_type)
   {
    case 0:
-    cam_str = "generic";
+    cam_str = "identity";
     break;
    case 1:
     cam_str = "rational";
@@ -1005,7 +1005,7 @@ void bwm_site_mgr::load_cam_tableau()
     cam_str = "perspective";
     break;
    case 4:
-    cam_str = "identity";
+    cam_str = "generic";
     break;
    case 5:
     cam_str = "geo";
